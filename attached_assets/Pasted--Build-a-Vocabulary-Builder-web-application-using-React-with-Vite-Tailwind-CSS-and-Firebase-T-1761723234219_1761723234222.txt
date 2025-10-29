@@ -1,0 +1,71 @@
+"Build a 'Vocabulary Builder' web application using React (with Vite), Tailwind CSS, and Firebase. The app needs to be fully responsive and work well on mobile browsers.
+
+Core Features:
+
+Firebase Backend:
+
+Set up Firebase (v11) for authentication (anonymous login) and Firestore.
+
+Word Data: Store all words in a user-specific private collection: /artifacts/{appId}/users/{userId}/words.
+
+User Metadata: Store user's streak and last visit data in a separate doc: /artifacts/{appId}/users/{userId}/metadata/profile.
+
+App Navigation:
+
+Implement a primary navigation component (e.g., tabs) to switch between four main views: 'Word List', 'Add New Word', 'Flashcards', and 'Quiz'.
+
+The header should display a 'Daily Streak' counter (e.g., "🔥 5") based on daily app loads.
+
+Word List View (Default):
+
+This is the main screen, displaying all saved words from Firestore in real-time.
+
+Search & Filter: Include a text search bar and a filter bar to select by tag. Both filters should work together.
+
+Word Card: Each card must show the word, definitions, sentences, and any tags as pills.
+
+Controls: Each card needs an 'Edit' button (goes to edit form), a 'Delete' button, and an 'Audio' button (uses window.speechSynthesis) to pronounce the word.
+
+Add/Edit Word Form:
+
+A single, reusable form for both adding and editing.
+
+Fields:
+
+Word: Text input.
+
+Tags: Text input for comma-separated tags (e.g., "work, science").
+
+Definitions: Dynamic list of text areas (add/remove).
+
+Example Sentences: Dynamic list of text areas (add/remove, 30 max).
+
+API Feature: Buttons to fetch and display 'Synonyms' and 'Antonyms' from the Datamuse API.
+
+Flashcard View:
+
+A study mode that uses the filtered list of words.
+
+Front of card shows the word, with an 'Audio' button.
+
+Clicking the card reveals the back (definitions, sentences) with a 3D flip.
+
+'Next' and 'Previous' buttons and a card counter ("Card 3 of 10").
+
+Quiz View:
+
+A multiple-choice quiz mode. Requires at least 4 words to start.
+
+Question: Shows one definition.
+
+Answers: Shows 4 word options (1 correct, 3 random).
+
+Provides instant feedback (correct/incorrect) and shows a final score screen.
+
+Styling & Setup:
+
+Use Tailwind CSS for a modern, clean, and mobile-first design.
+
+All components must be in a single App.jsx file. All icons must be inline SVGs.
+
+The app must initialize Firebase using global variables for the config (__firebase_config), app ID (__app_id), and auth token (__initial_auth_token)."
