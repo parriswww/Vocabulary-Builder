@@ -975,7 +975,7 @@ function AddEditWordView({
               disabled={loading || !word.trim()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover-elevate active-elevate-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Loading...' : 'Fetch Synonyms'}
+              {loading ? 'Loading...' : 'Get Synonyms'}
             </button>
             <button
               type="button"
@@ -984,7 +984,7 @@ function AddEditWordView({
               disabled={loading || !word.trim()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover-elevate active-elevate-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Loading...' : 'Fetch Antonyms'}
+              {loading ? 'Loading...' : 'Get Antonyms'}
             </button>
           </div>
 
