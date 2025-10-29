@@ -109,7 +109,14 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>('list');
   const [words, setWords] = useState<Word[]>([]);
-  const [metadata, setMetadata] = useState<UserMetadata>({ streak: 0, lastVisit: null });
+  const [metadata, setMetadata] = useState<UserMetadata>({ 
+    streak: 0, 
+    lastVisit: null,
+    totalReviews: 0,
+    totalCorrect: 0,
+    wordsLearned: 0,
+    wordsMastered: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
@@ -177,7 +184,19 @@ function App() {
     const unsubscribeWords = onSnapshot(wordsRef, (snapshot) => {
       const wordsData: Word[] = [];
       snapshot.forEach((doc) => {
-        wordsData.push({ id: doc.id, ...doc.data() } as Word);
+        const data = doc.data();
+        // Ensure backward compatibility with existing words
+        wordsData.push({ 
+          id: doc.id, 
+          ...data,
+          reviewCount: data.reviewCount ?? 0,
+          correctCount: data.correctCount ?? 0,
+          masteryLevel: data.masteryLevel ?? 'learning',
+          nextReviewDate: data.nextReviewDate ?? Date.now(),
+          lastReviewedAt: data.lastReviewedAt ?? null,
+          easeFactor: data.easeFactor ?? 2.5,
+          interval: data.interval ?? 1,
+        } as Word);
       });
       setWords(wordsData.sort((a, b) => b.createdAt - a.createdAt));
       setLoading(false);
@@ -189,10 +208,25 @@ function App() {
       const metadataSnap = await getDoc(metadataRef);
 
       const today = new Date().toDateString();
-      let currentMetadata: UserMetadata = { streak: 0, lastVisit: null };
+      let currentMetadata: UserMetadata = { 
+        streak: 0, 
+        lastVisit: null,
+        totalReviews: 0,
+        totalCorrect: 0,
+        wordsLearned: 0,
+        wordsMastered: 0,
+      };
 
       if (metadataSnap.exists()) {
-        currentMetadata = metadataSnap.data() as UserMetadata;
+        const data = metadataSnap.data();
+        currentMetadata = {
+          streak: data.streak || 0,
+          lastVisit: data.lastVisit || null,
+          totalReviews: data.totalReviews || 0,
+          totalCorrect: data.totalCorrect || 0,
+          wordsLearned: data.wordsLearned || 0,
+          wordsMastered: data.wordsMastered || 0,
+        };
       }
 
       // Update streak logic
@@ -270,11 +304,18 @@ function App() {
           updatedAt: Date.now(),
         });
       } else {
-        // Add new word
+        // Add new word with spaced repetition defaults
         await addDoc(wordsRef, {
           ...wordData,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          reviewCount: 0,
+          correctCount: 0,
+          masteryLevel: 'learning',
+          nextReviewDate: Date.now(), // Available for review immediately
+          lastReviewedAt: null,
+          easeFactor: 2.5,
+          interval: 1,
         });
       }
 
@@ -282,6 +323,94 @@ function App() {
       setCurrentView('list');
     } catch (error) {
       console.error('Error saving word:', error);
+    }
+  };
+
+  // SM-2 Algorithm for spaced repetition
+  const updateWordProgress = async (wordId: string, quality: number) => {
+    if (!db || !user) return;
+
+    const appId = window.__app_id;
+    const userPath = `artifacts/${appId}/users/${user.uid}`;
+    const wordRef = doc(db, `${userPath}/words/${wordId}`);
+
+    try {
+      const wordSnap = await getDoc(wordRef);
+      if (!wordSnap.exists()) return;
+
+      const data = wordSnap.data();
+      const word = { 
+        id: wordSnap.id, 
+        ...data,
+        reviewCount: data.reviewCount ?? 0,
+        correctCount: data.correctCount ?? 0,
+        masteryLevel: data.masteryLevel ?? 'learning',
+        easeFactor: data.easeFactor ?? 2.5,
+        interval: data.interval ?? 1,
+      } as Word;
+      
+      // SM-2 algorithm implementation
+      let { easeFactor, interval, reviewCount, correctCount } = word;
+      
+      reviewCount += 1;
+      if (quality >= 3) {
+        correctCount += 1;
+      }
+
+      // Update ease factor
+      easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+
+      // Calculate next interval
+      if (quality < 3) {
+        interval = 1; // Reset if answer was poor
+      } else {
+        if (reviewCount === 1) {
+          interval = 1;
+        } else if (reviewCount === 2) {
+          interval = 6;
+        } else {
+          interval = Math.round(interval * easeFactor);
+        }
+      }
+
+      // Determine mastery level
+      let masteryLevel: 'learning' | 'reviewing' | 'mastered' = 'learning';
+      const accuracy = correctCount / reviewCount;
+      
+      if (reviewCount >= 10 && accuracy >= 0.9 && interval >= 30) {
+        masteryLevel = 'mastered';
+      } else if (reviewCount >= 3 && accuracy >= 0.7) {
+        masteryLevel = 'reviewing';
+      }
+
+      // Calculate next review date
+      const nextReviewDate = Date.now() + (interval * 24 * 60 * 60 * 1000);
+
+      await updateDoc(wordRef, {
+        reviewCount,
+        correctCount,
+        easeFactor,
+        interval,
+        masteryLevel,
+        nextReviewDate,
+        lastReviewedAt: Date.now(),
+      });
+
+      // Update user metadata
+      const metadataRef = doc(db, `${userPath}/metadata/profile`);
+      const metadataSnap = await getDoc(metadataRef);
+      
+      if (metadataSnap.exists()) {
+        const currentMeta = metadataSnap.data();
+        await updateDoc(metadataRef, {
+          totalReviews: (currentMeta.totalReviews || 0) + 1,
+          totalCorrect: quality >= 3 ? (currentMeta.totalCorrect || 0) + 1 : currentMeta.totalCorrect,
+          wordsLearned: masteryLevel !== 'learning' ? Math.max(currentMeta.wordsLearned || 0, words.filter(w => w.masteryLevel !== 'learning').length) : currentMeta.wordsLearned,
+          wordsMastered: masteryLevel === 'mastered' ? Math.max(currentMeta.wordsMastered || 0, words.filter(w => w.masteryLevel === 'mastered').length) : currentMeta.wordsMastered,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating word progress:', error);
     }
   };
 
@@ -422,7 +551,7 @@ function App() {
         )}
 
         {currentView === 'flashcards' && (
-          <FlashcardsView words={filteredWords} onSpeak={speakWord} />
+          <FlashcardsView words={filteredWords} onSpeak={speakWord} onReview={updateWordProgress} />
         )}
 
         {currentView === 'quiz' && <QuizView words={filteredWords} />}
@@ -896,10 +1025,27 @@ function AddEditWordView({
   );
 }
 
-// Flashcards View Component
-function FlashcardsView({ words, onSpeak }: { words: Word[]; onSpeak: (text: string) => void }) {
+// Flashcards View Component with Spaced Repetition
+function FlashcardsView({ words, onSpeak, onReview }: { words: Word[]; onSpeak: (text: string) => void; onReview: (wordId: string, quality: number) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+
+  // Sort words by spaced repetition priority
+  const sortedWords = useMemo(() => {
+    const now = Date.now();
+    return [...words].sort((a, b) => {
+      const aDue = (a.nextReviewDate || 0) - now;
+      const bDue = (b.nextReviewDate || 0) - now;
+      // Prioritize overdue cards, then by difficulty (lower ease factor = harder)
+      if (aDue <= 0 && bDue > 0) return -1;
+      if (bDue <= 0 && aDue > 0) return 1;
+      if (aDue <= 0 && bDue <= 0) {
+        return (a.easeFactor || 2.5) - (b.easeFactor || 2.5);
+      }
+      return aDue - bDue;
+    });
+  }, [words]);
 
   if (words.length === 0) {
     return (
@@ -913,29 +1059,61 @@ function FlashcardsView({ words, onSpeak }: { words: Word[]; onSpeak: (text: str
     );
   }
 
-  const currentWord = words[currentIndex];
+  const currentWord = sortedWords[currentIndex];
+  const masteryColor = 
+    currentWord.masteryLevel === 'mastered' ? 'text-green-600' :
+    currentWord.masteryLevel === 'reviewing' ? 'text-blue-600' :
+    'text-orange-600';
+
+  const handleRating = async (quality: number) => {
+    await onReview(currentWord.id, quality);
+    setShowRating(false);
+    setFlipped(false);
+    // Move to next card
+    if (currentIndex + 1 < sortedWords.length) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setCurrentIndex(0); // Loop back to start
+    }
+  };
 
   const handleNext = () => {
     setFlipped(false);
-    setCurrentIndex((prev) => (prev + 1) % words.length);
+    setShowRating(false);
+    setCurrentIndex((prev) => (prev + 1) % sortedWords.length);
   };
 
   const handlePrevious = () => {
     setFlipped(false);
-    setCurrentIndex((prev) => (prev - 1 + words.length) % words.length);
+    setShowRating(false);
+    setCurrentIndex((prev) => (prev - 1 + sortedWords.length) % sortedWords.length);
+  };
+
+  const handleFlip = () => {
+    if (!flipped) {
+      setFlipped(true);
+      setShowRating(true);
+    }
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Card Counter */}
-      <div className="text-center text-sm text-muted-foreground" data-testid="text-card-counter">
-        Card {currentIndex + 1} of {words.length}
+      {/* Card Counter & Stats */}
+      <div className="flex items-center justify-between text-sm">
+        <div className="text-muted-foreground" data-testid="text-card-counter">
+          Card {currentIndex + 1} of {sortedWords.length}
+        </div>
+        <div className={`font-medium ${masteryColor}`} data-testid="text-mastery-level">
+          {currentWord.masteryLevel === 'learning' && '📚 Learning'}
+          {currentWord.masteryLevel === 'reviewing' && '📖 Reviewing'}
+          {currentWord.masteryLevel === 'mastered' && '🏆 Mastered'}
+        </div>
       </div>
 
       {/* Flashcard */}
       <div
         className="relative cursor-pointer"
-        onClick={() => setFlipped(!flipped)}
+        onClick={handleFlip}
         data-testid="flashcard"
         style={{ perspective: '1000px', minHeight: '400px' }}
       >
@@ -969,6 +1147,11 @@ function FlashcardsView({ words, onSpeak }: { words: Word[]; onSpeak: (text: str
                 <Icons.Speaker />
               </button>
               <p className="text-sm text-muted-foreground">Click to reveal definition</p>
+              {currentWord.reviewCount > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Reviewed {currentWord.reviewCount} times • {Math.round((currentWord.correctCount / currentWord.reviewCount) * 100)}% accuracy
+                </div>
+              )}
             </div>
           </div>
 
@@ -1017,6 +1200,50 @@ function FlashcardsView({ words, onSpeak }: { words: Word[]; onSpeak: (text: str
           </div>
         </div>
       </div>
+
+      {/* Difficulty Rating Buttons (shown when card is flipped) */}
+      {showRating && (
+        <div className="space-y-3">
+          <p className="text-center text-sm font-medium text-foreground">How well did you know this?</p>
+          <div className="grid grid-cols-5 gap-2">
+            <button
+              onClick={() => handleRating(0)}
+              data-testid="button-rating-0"
+              className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover-elevate active-elevate-2"
+            >
+              Again
+            </button>
+            <button
+              onClick={() => handleRating(1)}
+              data-testid="button-rating-1"
+              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover-elevate active-elevate-2"
+            >
+              Hard
+            </button>
+            <button
+              onClick={() => handleRating(3)}
+              data-testid="button-rating-3"
+              className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover-elevate active-elevate-2"
+            >
+              Good
+            </button>
+            <button
+              onClick={() => handleRating(4)}
+              data-testid="button-rating-4"
+              className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover-elevate active-elevate-2"
+            >
+              Easy
+            </button>
+            <button
+              onClick={() => handleRating(5)}
+              data-testid="button-rating-5"
+              className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover-elevate active-elevate-2"
+            >
+              Perfect
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Buttons */}
       <div className="flex gap-3">
