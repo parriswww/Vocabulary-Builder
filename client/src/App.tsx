@@ -98,9 +98,14 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
   ),
+  Chart: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
 };
 
-type View = 'list' | 'add' | 'flashcards' | 'quiz';
+type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
 
 function App() {
   const [firebaseApp, setFirebaseApp] = useState<FirebaseApp | null>(null);
@@ -515,6 +520,18 @@ function App() {
               <Icons.Quiz />
               Quiz
             </button>
+            <button
+              onClick={() => setCurrentView('stats')}
+              data-testid="button-view-stats"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                currentView === 'stats'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover-elevate'
+              }`}
+            >
+              <Icons.Chart />
+              Statistics
+            </button>
           </nav>
         </div>
       </header>
@@ -555,6 +572,8 @@ function App() {
         )}
 
         {currentView === 'quiz' && <QuizView words={filteredWords} />}
+
+        {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
       </main>
     </div>
   );
@@ -1431,6 +1450,187 @@ function QuizView({ words }: { words: Word[] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Statistics View Component
+function StatisticsView({ words, metadata }: { words: Word[]; metadata: UserMetadata }) {
+  // Calculate statistics
+  const totalWords = words.length;
+  const wordsByMastery = {
+    learning: words.filter(w => w.masteryLevel === 'learning').length,
+    reviewing: words.filter(w => w.masteryLevel === 'reviewing').length,
+    mastered: words.filter(w => w.masteryLevel === 'mastered').length,
+  };
+
+  const wordsByTag = useMemo(() => {
+    const tagCounts: Record<string, number> = {};
+    words.forEach(word => {
+      word.tags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    });
+    return Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10); // Top 10 tags
+  }, [words]);
+
+  const reviewAccuracy = metadata.totalReviews > 0 
+    ? Math.round((metadata.totalCorrect / metadata.totalReviews) * 100) 
+    : 0;
+
+  const maxMasteryCount = Math.max(wordsByMastery.learning, wordsByMastery.reviewing, wordsByMastery.mastered, 1);
+  const maxTagCount = Math.max(...wordsByTag.map(([, count]) => count), 1);
+
+  if (totalWords === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="inline-block text-muted-foreground mb-4">
+          <Icons.Chart />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No Statistics Available</h3>
+        <p className="text-muted-foreground">Add some words to see your learning progress</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-foreground mb-2">Your Learning Statistics</h2>
+        <p className="text-muted-foreground">Track your vocabulary building progress</p>
+      </div>
+
+      {/* Overview Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card border border-card-border rounded-lg p-4 text-center" data-testid="stat-total-words">
+          <div className="text-3xl font-bold text-primary mb-1">{totalWords}</div>
+          <div className="text-sm text-muted-foreground">Total Words</div>
+        </div>
+        <div className="bg-card border border-card-border rounded-lg p-4 text-center" data-testid="stat-streak">
+          <div className="text-3xl font-bold text-orange-600 mb-1">{metadata.streak}</div>
+          <div className="text-sm text-muted-foreground">Day Streak</div>
+        </div>
+        <div className="bg-card border border-card-border rounded-lg p-4 text-center" data-testid="stat-reviews">
+          <div className="text-3xl font-bold text-blue-600 mb-1">{metadata.totalReviews}</div>
+          <div className="text-sm text-muted-foreground">Total Reviews</div>
+        </div>
+        <div className="bg-card border border-card-border rounded-lg p-4 text-center" data-testid="stat-accuracy">
+          <div className="text-3xl font-bold text-green-600 mb-1">{reviewAccuracy}%</div>
+          <div className="text-sm text-muted-foreground">Accuracy</div>
+        </div>
+      </div>
+
+      {/* Mastery Level Distribution */}
+      <div className="bg-card border border-card-border rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Words by Mastery Level</h3>
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-orange-600">📚 Learning</span>
+              <span className="text-sm text-muted-foreground" data-testid="stat-learning-count">{wordsByMastery.learning}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3">
+              <div 
+                className="bg-orange-500 h-3 rounded-full transition-all"
+                style={{ width: `${(wordsByMastery.learning / maxMasteryCount) * 100}%` }}
+                data-testid="bar-learning"
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-600">📖 Reviewing</span>
+              <span className="text-sm text-muted-foreground" data-testid="stat-reviewing-count">{wordsByMastery.reviewing}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3">
+              <div 
+                className="bg-blue-500 h-3 rounded-full transition-all"
+                style={{ width: `${(wordsByMastery.reviewing / maxMasteryCount) * 100}%` }}
+                data-testid="bar-reviewing"
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-600">🏆 Mastered</span>
+              <span className="text-sm text-muted-foreground" data-testid="stat-mastered-count">{wordsByMastery.mastered}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3">
+              <div 
+                className="bg-green-500 h-3 rounded-full transition-all"
+                style={{ width: `${(wordsByMastery.mastered / maxMasteryCount) * 100}%` }}
+                data-testid="bar-mastered"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Words by Tag */}
+      {wordsByTag.length > 0 && (
+        <div className="bg-card border border-card-border rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Top Tags</h3>
+          <div className="space-y-3">
+            {wordsByTag.map(([tag, count], idx) => (
+              <div key={tag}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground capitalize" data-testid={`tag-name-${idx}`}>{tag}</span>
+                  <span className="text-sm text-muted-foreground" data-testid={`tag-count-${idx}`}>{count} {count === 1 ? 'word' : 'words'}</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all"
+                    style={{ width: `${(count / maxTagCount) * 100}%` }}
+                    data-testid={`tag-bar-${idx}`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Learning Progress Summary */}
+      <div className="bg-card border border-card-border rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Learning Progress</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <span className="text-2xl">✅</span>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-foreground" data-testid="stat-words-learned">{metadata.wordsLearned}</div>
+              <div className="text-sm text-muted-foreground">Words Learned</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+              <span className="text-2xl">🎯</span>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-foreground" data-testid="stat-words-mastered">{metadata.wordsMastered}</div>
+              <div className="text-sm text-muted-foreground">Words Mastered</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Motivational Message */}
+      {metadata.streak > 0 && (
+        <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg p-6 text-center">
+          <div className="text-4xl mb-2">🔥</div>
+          <h4 className="text-lg font-semibold text-foreground mb-2">Keep it up!</h4>
+          <p className="text-sm text-muted-foreground">
+            You've studied for {metadata.streak} {metadata.streak === 1 ? 'day' : 'days'} in a row. 
+            {metadata.streak < 7 && " You're building a great habit!"}
+            {metadata.streak >= 7 && metadata.streak < 30 && " You're on fire!"}
+            {metadata.streak >= 30 && " You're a vocabulary champion!"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
