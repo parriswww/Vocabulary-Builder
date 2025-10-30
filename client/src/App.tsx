@@ -169,17 +169,31 @@ function App() {
   useEffect(() => {
     const initFirebase = async () => {
       try {
-        // Use provided config or fallback for development
-        const config = window.__firebase_config || {
-          // Development fallback - these should be replaced with real config in production
-          apiKey: "demo-api-key",
-          authDomain: "demo-project.firebaseapp.com",
-          projectId: "demo-project",
-          storageBucket: "demo-project.appspot.com",
-          messagingSenderId: "000000000000",
-          appId: "1:000000000000:web:0000000000000000000000"
-        };
-        const appId = window.__app_id || 'demo-app';
+        // Fetch Firebase config from server
+        let config;
+        let appId;
+        
+        try {
+          const response = await fetch('/api/firebase-config');
+          const data = await response.json();
+          config = data.config;
+          appId = data.appId;
+        } catch (fetchError) {
+          console.warn('Could not fetch Firebase config from server, using fallback');
+          // Fallback to window config or demo config
+          config = window.__firebase_config || {
+            apiKey: "demo-api-key",
+            authDomain: "demo-project.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo-project.appspot.com",
+            messagingSenderId: "000000000000",
+            appId: "1:000000000000:web:0000000000000000000000"
+          };
+          appId = window.__app_id || 'demo-app';
+        }
+        
+        // Store appId globally for later use
+        window.__app_id = appId;
 
         const app = initializeApp(config);
         const authInstance = getAuth(app);
