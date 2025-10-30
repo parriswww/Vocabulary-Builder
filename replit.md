@@ -18,6 +18,16 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 - PWA meta tags to hide browser controls and enable full-screen mode
 - Mobile-first layout with touch-optimized spacing
 
+**Firebase Integration for Cross-Device Sync:**
+- Added `/api/firebase-config` endpoint to securely serve Firebase credentials from environment variables
+- Frontend fetches configuration at runtime (no hardcoded secrets)
+- Comprehensive error handling for Firebase permission errors
+- Global unhandledrejection handler prevents Vite error overlay from blocking UI
+- Created FIREBASE_SECURITY_RULES.md with step-by-step setup instructions
+- App gracefully handles missing security rules with helpful console messages
+- Data structure supports per-user isolation: `artifacts/{projectId}/users/{userId}/...`
+- All Firebase operations wrapped in try-catch for graceful degradation
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
