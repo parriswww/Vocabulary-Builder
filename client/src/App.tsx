@@ -239,80 +239,103 @@ function App() {
 
     // Listen to words collection
     const wordsRef = collection(db, `${userPath}/words`);
-    const unsubscribeWords = onSnapshot(wordsRef, (snapshot) => {
-      const wordsData: Word[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        // Ensure backward compatibility with existing words
-        wordsData.push({ 
-          id: doc.id, 
-          ...data,
-          reviewCount: data.reviewCount ?? 0,
-          correctCount: data.correctCount ?? 0,
-          masteryLevel: data.masteryLevel ?? 'learning',
-          nextReviewDate: data.nextReviewDate ?? Date.now(),
-          lastReviewedAt: data.lastReviewedAt ?? null,
-          easeFactor: data.easeFactor ?? 2.5,
-          interval: data.interval ?? 1,
-        } as Word);
-      });
-      setWords(wordsData.sort((a, b) => b.createdAt - a.createdAt));
-      setLoading(false);
-    });
+    const unsubscribeWords = onSnapshot(
+      wordsRef, 
+      (snapshot) => {
+        const wordsData: Word[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          // Ensure backward compatibility with existing words
+          wordsData.push({ 
+            id: doc.id, 
+            ...data,
+            reviewCount: data.reviewCount ?? 0,
+            correctCount: data.correctCount ?? 0,
+            masteryLevel: data.masteryLevel ?? 'learning',
+            nextReviewDate: data.nextReviewDate ?? Date.now(),
+            lastReviewedAt: data.lastReviewedAt ?? null,
+            easeFactor: data.easeFactor ?? 2.5,
+            interval: data.interval ?? 1,
+          } as Word);
+        });
+        setWords(wordsData.sort((a, b) => b.createdAt - a.createdAt));
+        setLoading(false);
+      },
+      (error) => {
+        console.warn('Firebase permission error - Security Rules not configured yet:', error);
+        console.info('Please configure Firebase Security Rules to enable data persistence.');
+        console.info('See FIREBASE_SECURITY_RULES.md for instructions.');
+        // Still set loading to false so the app can render
+        setLoading(false);
+      }
+    );
 
     // Load and update metadata (streak)
     const loadMetadata = async () => {
-      const metadataRef = doc(db, `${userPath}/metadata/profile`);
-      const metadataSnap = await getDoc(metadataRef);
+      try {
+        const metadataRef = doc(db, `${userPath}/metadata/profile`);
+        const metadataSnap = await getDoc(metadataRef);
 
-      const today = new Date().toDateString();
-      let currentMetadata: UserMetadata = { 
-        streak: 0, 
-        lastVisit: null,
-        totalReviews: 0,
-        totalCorrect: 0,
-        wordsLearned: 0,
-        wordsMastered: 0,
-      };
-
-      if (metadataSnap.exists()) {
-        const data = metadataSnap.data();
-        currentMetadata = {
-          streak: data.streak || 0,
-          lastVisit: data.lastVisit || null,
-          totalReviews: data.totalReviews || 0,
-          totalCorrect: data.totalCorrect || 0,
-          wordsLearned: data.wordsLearned || 0,
-          wordsMastered: data.wordsMastered || 0,
+        const today = new Date().toDateString();
+        let currentMetadata: UserMetadata = { 
+          streak: 0, 
+          lastVisit: null,
+          totalReviews: 0,
+          totalCorrect: 0,
+          wordsLearned: 0,
+          wordsMastered: 0,
         };
-      }
 
-      // Update streak logic
-      if (currentMetadata.lastVisit) {
-        const lastVisitDate = new Date(currentMetadata.lastVisit).toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        if (metadataSnap.exists()) {
+          const data = metadataSnap.data();
+          currentMetadata = {
+            streak: data.streak || 0,
+            lastVisit: data.lastVisit || null,
+            totalReviews: data.totalReviews || 0,
+            totalCorrect: data.totalCorrect || 0,
+            wordsLearned: data.wordsLearned || 0,
+            wordsMastered: data.wordsMastered || 0,
+          };
+        }
 
-        if (lastVisitDate === today) {
-          // Same day, no change
-        } else if (lastVisitDate === yesterday) {
-          // Consecutive day, increment streak
-          currentMetadata.streak += 1;
-          currentMetadata.lastVisit = today;
-          await setDoc(metadataRef, currentMetadata);
+        // Update streak logic
+        if (currentMetadata.lastVisit) {
+          const lastVisitDate = new Date(currentMetadata.lastVisit).toDateString();
+          const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+          if (lastVisitDate === today) {
+            // Same day, no change
+          } else if (lastVisitDate === yesterday) {
+            // Consecutive day, increment streak
+            currentMetadata.streak += 1;
+            currentMetadata.lastVisit = today;
+            await setDoc(metadataRef, currentMetadata);
+          } else {
+            // Streak broken, reset
+            currentMetadata.streak = 1;
+            currentMetadata.lastVisit = today;
+            await setDoc(metadataRef, currentMetadata);
+          }
         } else {
-          // Streak broken, reset
+          // First visit
           currentMetadata.streak = 1;
           currentMetadata.lastVisit = today;
           await setDoc(metadataRef, currentMetadata);
         }
-      } else {
-        // First visit
-        currentMetadata.streak = 1;
-        currentMetadata.lastVisit = today;
-        await setDoc(metadataRef, currentMetadata);
-      }
 
-      setMetadata(currentMetadata);
+        setMetadata(currentMetadata);
+      } catch (error: any) {
+        console.warn('Firebase permission error loading metadata:', error);
+        // Set default metadata
+        setMetadata({
+          streak: 0,
+          lastVisit: null,
+          totalReviews: 0,
+          totalCorrect: 0,
+          wordsLearned: 0,
+          wordsMastered: 0,
+        });
+      }
     };
 
     loadMetadata();
