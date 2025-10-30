@@ -103,6 +103,16 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     </svg>
   ),
+  Moon: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  ),
+  Sun: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
 };
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
@@ -126,6 +136,34 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [editingWord, setEditingWord] = useState<Word | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Dark mode effect
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  // Hide splash screen when done loading
+  useEffect(() => {
+    if (!loading) {
+      const splash = document.getElementById('splash');
+      if (splash) {
+        splash.style.opacity = '0';
+        splash.style.transition = 'opacity 0.3s ease-out';
+        setTimeout(() => {
+          splash.remove();
+        }, 300);
+      }
+    }
+  }, [loading]);
 
   // Initialize Firebase
   useEffect(() => {
@@ -444,100 +482,118 @@ function App() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-          <p className="mt-4 text-muted-foreground">Loading your vocabulary...</p>
-        </div>
-      </div>
-    );
+    return null; // Splash screen is shown from HTML
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header with Navigation */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-semibold text-foreground">Vocabulary Builder</h1>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Mobile Header */}
+      <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white" data-testid="text-title">
+            📚 Vocabulary Builder
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white">
               <Icons.Fire />
               <span className="font-semibold" data-testid="text-streak">{metadata.streak}</span>
             </div>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              data-testid="button-dark-mode"
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
           </div>
-
-          {/* Navigation Tabs */}
-          <nav className="flex gap-2 overflow-x-auto">
-            <button
-              onClick={() => setCurrentView('list')}
-              data-testid="button-view-list"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                currentView === 'list'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover-elevate'
-              }`}
-            >
-              <Icons.List />
-              Word List
-            </button>
-            <button
-              onClick={() => {
-                setEditingWord(null);
-                setCurrentView('add');
-              }}
-              data-testid="button-view-add"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                currentView === 'add'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover-elevate'
-              }`}
-            >
-              <Icons.Plus />
-              Add New Word
-            </button>
-            <button
-              onClick={() => setCurrentView('flashcards')}
-              data-testid="button-view-flashcards"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                currentView === 'flashcards'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover-elevate'
-              }`}
-            >
-              <Icons.Cards />
-              Flashcards
-            </button>
-            <button
-              onClick={() => setCurrentView('quiz')}
-              data-testid="button-view-quiz"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                currentView === 'quiz'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover-elevate'
-              }`}
-            >
-              <Icons.Quiz />
-              Quiz
-            </button>
-            <button
-              onClick={() => setCurrentView('stats')}
-              data-testid="button-view-stats"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                currentView === 'stats'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover-elevate'
-              }`}
-            >
-              <Icons.Chart />
-              Statistics
-            </button>
-          </nav>
         </div>
+
+        {/* Vertical Navigation */}
+        <nav className="mt-4 space-y-2" data-testid="nav-vertical">
+          <button
+            onClick={() => setCurrentView('list')}
+            data-testid="button-view-list"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              currentView === 'list'
+                ? 'bg-white text-orange-600 shadow-xl scale-105'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+            }`}
+            style={{
+              transform: currentView === 'list' ? 'translateZ(20px)' : 'translateZ(0)',
+            }}
+          >
+            <Icons.List />
+            <span>Word List</span>
+          </button>
+          <button
+            onClick={() => {
+              setEditingWord(null);
+              setCurrentView('add');
+            }}
+            data-testid="button-view-add"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              currentView === 'add'
+                ? 'bg-white text-orange-600 shadow-xl scale-105'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+            }`}
+            style={{
+              transform: currentView === 'add' ? 'translateZ(20px)' : 'translateZ(0)',
+            }}
+          >
+            <Icons.Plus />
+            <span>Add New Word</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('flashcards')}
+            data-testid="button-view-flashcards"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              currentView === 'flashcards'
+                ? 'bg-white text-orange-600 shadow-xl scale-105'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+            }`}
+            style={{
+              transform: currentView === 'flashcards' ? 'translateZ(20px)' : 'translateZ(0)',
+            }}
+          >
+            <Icons.Cards />
+            <span>Flashcards</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('quiz')}
+            data-testid="button-view-quiz"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              currentView === 'quiz'
+                ? 'bg-white text-orange-600 shadow-xl scale-105'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+            }`}
+            style={{
+              transform: currentView === 'quiz' ? 'translateZ(20px)' : 'translateZ(0)',
+            }}
+          >
+            <Icons.Quiz />
+            <span>Quiz</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('stats')}
+            data-testid="button-view-stats"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              currentView === 'stats'
+                ? 'bg-white text-orange-600 shadow-xl scale-105'
+                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+            }`}
+            style={{
+              transform: currentView === 'stats' ? 'translateZ(20px)' : 'translateZ(0)',
+            }}
+          >
+            <Icons.Chart />
+            <span>Statistics</span>
+          </button>
+        </nav>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="flex-1 overflow-y-auto px-4 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         {currentView === 'list' && (
           <WordListView
             words={filteredWords}
@@ -608,7 +664,7 @@ function WordListView({
       {/* Search and Filter Bar */}
       <div className="space-y-3">
         <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
             <Icons.Search />
           </div>
           <input
@@ -617,7 +673,7 @@ function WordListView({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             data-testid="input-search"
-            className="w-full pl-10 pr-4 py-3 bg-card border border-card-border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
           />
         </div>
 
@@ -675,15 +731,15 @@ function WordListView({
             <div
               key={word.id}
               data-testid={`card-word-${word.id}`}
-              className="bg-card border border-card-border rounded-lg p-6 shadow-sm space-y-4"
+              className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 shadow-xl space-y-4"
             >
               {/* Word Header */}
               <div className="flex items-start justify-between gap-4">
-                <h3 className="text-2xl font-bold text-foreground" data-testid={`text-word-${word.id}`}>{word.word}</h3>
+                <h3 className="text-2xl font-bold text-white" data-testid={`text-word-${word.id}`}>{word.word}</h3>
                 <button
                   onClick={() => onSpeak(word.word)}
                   data-testid={`button-audio-${word.id}`}
-                  className="p-2 rounded-full text-primary hover-elevate active-elevate-2"
+                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
                   aria-label="Pronounce word"
                 >
                   <Icons.Speaker />
@@ -697,7 +753,7 @@ function WordListView({
                     <span
                       key={idx}
                       data-testid={`tag-${word.id}-${idx}`}
-                      className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium"
+                      className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white rounded-full text-xs font-medium"
                     >
                       {tag}
                     </span>
@@ -707,12 +763,12 @@ function WordListView({
 
               {/* Definitions */}
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wide">
                   Definitions
                 </h4>
                 <ol className="list-decimal list-inside space-y-1">
                   {word.definitions.map((def, idx) => (
-                    <li key={idx} className="text-base leading-relaxed text-foreground" data-testid={`text-definition-${word.id}-${idx}`}>
+                    <li key={idx} className="text-base leading-relaxed text-white" data-testid={`text-definition-${word.id}-${idx}`}>
                       {def}
                     </li>
                   ))}
@@ -722,12 +778,12 @@ function WordListView({
               {/* Example Sentences */}
               {word.sentences.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wide">
                     Example Sentences
                   </h4>
                   <div className="space-y-1">
                     {word.sentences.map((sentence, idx) => (
-                      <p key={idx} className="text-sm italic text-muted-foreground leading-relaxed" data-testid={`text-sentence-${word.id}-${idx}`}>
+                      <p key={idx} className="text-sm italic text-white/90 leading-relaxed" data-testid={`text-sentence-${word.id}-${idx}`}>
                         "{sentence}"
                       </p>
                     ))}
@@ -736,11 +792,11 @@ function WordListView({
               )}
 
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/20">
                 <button
                   onClick={() => onEdit(word)}
                   data-testid={`button-edit-${word.id}`}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground rounded-md hover-elevate active-elevate-2"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
                 >
                   <Icons.Edit />
                   Edit
@@ -748,7 +804,7 @@ function WordListView({
                 <button
                   onClick={() => onDelete(word.id)}
                   data-testid={`button-delete-${word.id}`}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive rounded-md hover-elevate active-elevate-2"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-500/30 rounded-lg hover:bg-red-500/50 transition-colors"
                 >
                   <Icons.Trash />
                   Delete
