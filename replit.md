@@ -2,7 +2,21 @@
 
 ## Overview
 
-A vocabulary learning web application built with React, TypeScript, and Firebase that helps users build and master their word collection through flashcards, quizzes, and daily practice. The app features real-time data synchronization, streak tracking, and integration with the Datamuse API for fetching synonyms and antonyms.
+A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. Designed to feel like a native mobile app with vertical navigation, vibrant gradient UI, and no browser chrome. Features include flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, statistics dashboard, and integration with the Datamuse API.
+
+## Recent Changes (October 30, 2025)
+
+**Mobile App Transformation:**
+- Redesigned UI to look like a native mobile app with vertical navigation
+- Orange gradient header (from-orange-500 to-orange-600)
+- Orange "📚 Vocabulary Builder" title in white text
+- Vertical 3D rounded rectangle navigation buttons with scale/shadow effects
+- White interior search bar (independent of theme)
+- Gradient word cards (blue-to-purple) with white text
+- Splash screen with gradient background and loading spinner
+- Dark mode toggle with localStorage persistence
+- PWA meta tags to hide browser controls and enable full-screen mode
+- Mobile-first layout with touch-optimized spacing
 
 ## User Preferences
 

@@ -207,7 +207,8 @@ function App() {
         setUser(userCredential.user);
       } catch (error) {
         console.error('Firebase initialization error:', error);
-        alert('Unable to connect to Firebase. Please check your configuration.');
+        console.warn('App will run in demo mode without Firebase persistence');
+        // Set loading to false to allow app to render
         setLoading(false);
       }
     };

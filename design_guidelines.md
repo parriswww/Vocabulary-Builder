@@ -2,15 +2,16 @@
 
 ## Design Approach
 
-**Selected Approach:** Design System with Learning App References
+**Selected Approach:** Mobile-First Native App Experience
 
-**Justification:** This is a utility-focused productivity tool where efficiency, clarity, and ease of learning are paramount. We'll draw inspiration from modern learning platforms (Quizlet, Duolingo) and productivity tools (Notion, Linear) that excel at presenting information-dense content in accessible, scannable formats.
+**Justification:** This is a mobile-styled web application designed to feel like a native app. The design prioritizes touch-friendly interactions, vertical navigation, vibrant gradients, and a full-screen experience without browser chrome. Inspired by modern mobile learning apps (Duolingo, Quizlet) with emphasis on colorful, engaging UI.
 
 **Key Design Principles:**
-- **Clarity First:** Information hierarchy must be immediately obvious
-- **Learning-Optimized:** Design supports memory retention and focus
-- **Frictionless Interaction:** Minimize cognitive load during study sessions
-- **Progressive Disclosure:** Show information when needed, hide complexity when not
+- **Mobile-First:** Designed primarily for mobile/touch interactions with vertical navigation
+- **App-Like Experience:** Full-screen with hidden browser controls, splash screen, native feel
+- **Vibrant & Engaging:** Orange branding, gradient cards, white text on colored backgrounds
+- **Touch-Optimized:** Large tap targets, rounded rectangles, 3D visual effects
+- **Local Storage:** User preferences (dark mode) saved locally
 
 ---
 
@@ -57,30 +58,41 @@ We will use Tailwind units of **2, 3, 4, 6, 8, and 12** consistently throughout 
 ## Component Library
 
 ### Navigation
-**Primary Tab Navigation:**
-- Fixed position at top with app header
-- Horizontally scrollable tabs on mobile
-- Pills/underline indicator for active state
-- Icons + labels for each tab (Word List, Add New, Flashcards, Quiz)
-- Streak counter integrated in header: Icon + number in a pill/badge
+**Vertical Mobile Navigation:**
+- Orange gradient header background (from-orange-500 to-orange-600)
+- Orange title "📚 Vocabulary Builder" in white text
+- Vertical button stack navigation
+- 3D rounded rectangles (rounded-2xl)
+- Active state: white background with orange text, shadow-xl, scale-105
+- Inactive state: white/10 semi-transparent with backdrop blur
+- Full-width buttons with icons and labels
+- Streak counter and dark mode toggle in header
+- Touch-optimized spacing (gap-2, py-3, px-4)
 
 ### Word Cards (List View)
-**Card Structure:**
-- Rounded corners (rounded-lg), shadow (shadow-md)
+**Card Structure - Vibrant Bubble Design:**
+- Gradient backgrounds: from-blue-500 to-purple-600
+- Rounded corners: rounded-2xl (more rounded than standard)
+- Shadow: shadow-xl for depth
 - Padding: p-6
-- Sections separated with dividers or spacing
-- **Header:** Word in large text + Audio button (inline)
-- **Tags:** Horizontal flex-wrap of pill badges (rounded-full, px-3 py-1, text-xs)
-- **Definitions:** Ordered list with consistent spacing (space-y-2)
-- **Sentences:** Styled differently from definitions (perhaps italic or with quote styling)
-- **Actions Footer:** Flex justify-end with Edit and Delete buttons (gap-2)
+- **All text in WHITE** for maximum contrast on colored background
+- **Header:** Word in white (text-2xl font-bold) + Audio button with white/20 backdrop
+- **Tags:** White text on white/20 semi-transparent backdrop (rounded-full)
+- **Definitions:** White text (text-white), section header text-white/80
+- **Sentences:** White text with slight transparency (text-white/90), italic
+- **Actions Footer:** White text on semi-transparent backgrounds
+  - Edit: bg-white/10, hover:bg-white/20
+  - Delete: bg-red-500/30, hover:bg-red-500/50
+  - Border separator: border-white/20
 
 ### Search & Filter Bar
-- Sticky or fixed below navigation
-- **Search:** Input with search icon (leading icon pattern)
-- **Tag Filter:** Dropdown/select or pills for active filters
-- Compact on mobile, expanded on desktop
-- Clear filters button when active
+- **WHITE interior background** (bg-white, not following theme)
+- Dark gray text (text-gray-900) for readability
+- Border: border-gray-300
+- Rounded: rounded-xl
+- Focus ring: focus:ring-orange-500
+- Search icon: text-gray-400
+- Shadow: shadow-sm for subtle elevation
 
 ### Add/Edit Form
 **Layout:**
@@ -164,21 +176,42 @@ This is a utility application, not a marketing page. Visual elements should supp
 
 ---
 
+## Mobile App Features
+
+**PWA Configuration:**
+- Viewport meta tags to hide browser controls (viewport-fit=cover, user-scalable=no)
+- Mobile-web-app-capable and apple-mobile-web-app-capable set to "yes"
+- Theme color set to orange (#f97316)
+- Apple status bar style: black-translucent
+- Full-screen experience on mobile devices
+
+**Splash Screen:**
+- Gradient background (135deg, #667eea to #764ba2)
+- Centered logo: "📚 Vocabulary" in white
+- Animated spinner during Firebase initialization
+- Fade-out transition when app loads
+- Prevents white flash on startup
+
+**Local Storage:**
+- Dark mode preference saved to localStorage
+- Persists across sessions
+- Applied on app initialization
+- Toggle button in header (sun/moon icons)
+
 ## Responsive Behavior
 
-**Mobile (< 768px):**
-- Single column layouts
-- Full-width cards
-- Stacked form fields
-- Bottom-fixed action buttons where appropriate
-- Horizontal scrolling tabs
-- Simplified navigation
+**Mobile-First Design:**
+- Vertical navigation instead of horizontal tabs
+- Full-screen layout (h-screen with flex-col)
+- Overflow scrolling on main content area
+- Single column card layout
+- Touch-optimized tap targets (min-h-9 buttons)
+- -webkit-overflow-scrolling: touch for smooth iOS scrolling
 
 **Tablet/Desktop (≥ 768px):**
-- Multi-column word list
-- Inline form actions
-- Wider flashcard format
-- More generous spacing (scale up from base units)
+- Same vertical navigation (maintains mobile app feel)
+- Two-column word list (grid-cols-2)
+- All other elements remain mobile-optimized
 
 ---
 
