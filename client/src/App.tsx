@@ -546,128 +546,133 @@ function App() {
             </button>
           </div>
         </div>
-
-        {/* Vertical Navigation */}
-        <nav className="mt-4 space-y-2" data-testid="nav-vertical">
-          <button
-            onClick={() => setCurrentView('list')}
-            data-testid="button-view-list"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
-              currentView === 'list'
-                ? 'bg-white text-orange-600 shadow-xl scale-105'
-                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
-            }`}
-            style={{
-              transform: currentView === 'list' ? 'translateZ(20px)' : 'translateZ(0)',
-            }}
-          >
-            <Icons.List />
-            <span>Word List</span>
-          </button>
-          <button
-            onClick={() => {
-              setEditingWord(null);
-              setCurrentView('add');
-            }}
-            data-testid="button-view-add"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
-              currentView === 'add'
-                ? 'bg-white text-orange-600 shadow-xl scale-105'
-                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
-            }`}
-            style={{
-              transform: currentView === 'add' ? 'translateZ(20px)' : 'translateZ(0)',
-            }}
-          >
-            <Icons.Plus />
-            <span>Add New Word</span>
-          </button>
-          <button
-            onClick={() => setCurrentView('flashcards')}
-            data-testid="button-view-flashcards"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
-              currentView === 'flashcards'
-                ? 'bg-white text-orange-600 shadow-xl scale-105'
-                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
-            }`}
-            style={{
-              transform: currentView === 'flashcards' ? 'translateZ(20px)' : 'translateZ(0)',
-            }}
-          >
-            <Icons.Cards />
-            <span>Flashcards</span>
-          </button>
-          <button
-            onClick={() => setCurrentView('quiz')}
-            data-testid="button-view-quiz"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
-              currentView === 'quiz'
-                ? 'bg-white text-orange-600 shadow-xl scale-105'
-                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
-            }`}
-            style={{
-              transform: currentView === 'quiz' ? 'translateZ(20px)' : 'translateZ(0)',
-            }}
-          >
-            <Icons.Quiz />
-            <span>Quiz</span>
-          </button>
-          <button
-            onClick={() => setCurrentView('stats')}
-            data-testid="button-view-stats"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
-              currentView === 'stats'
-                ? 'bg-white text-orange-600 shadow-xl scale-105'
-                : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
-            }`}
-            style={{
-              transform: currentView === 'stats' ? 'translateZ(20px)' : 'translateZ(0)',
-            }}
-          >
-            <Icons.Chart />
-            <span>Statistics</span>
-          </button>
-        </nav>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-        {currentView === 'list' && (
-          <WordListView
-            words={filteredWords}
-            allWords={words}
-            allTags={allTags}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
-            onEdit={(word) => {
-              setEditingWord(word);
-              setCurrentView('add');
-            }}
-            onDelete={deleteWord}
-            onSpeak={speakWord}
-          />
-        )}
+      <main className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* Sticky Navigation Container */}
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-orange-500 to-orange-600 px-4 pt-2 pb-4 shadow-lg">
+          <nav className="space-y-2" data-testid="nav-vertical">
+            <button
+              onClick={() => setCurrentView('list')}
+              data-testid="button-view-list"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+                currentView === 'list'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'list' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.List />
+              <span>Word List</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditingWord(null);
+                setCurrentView('add');
+              }}
+              data-testid="button-view-add"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+                currentView === 'add'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'add' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.Plus />
+              <span>Add New Word</span>
+            </button>
+            <button
+              onClick={() => setCurrentView('flashcards')}
+              data-testid="button-view-flashcards"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+                currentView === 'flashcards'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'flashcards' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.Cards />
+              <span>Flashcards</span>
+            </button>
+            <button
+              onClick={() => setCurrentView('quiz')}
+              data-testid="button-view-quiz"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+                currentView === 'quiz'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'quiz' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.Quiz />
+              <span>Quiz</span>
+            </button>
+            <button
+              onClick={() => setCurrentView('stats')}
+              data-testid="button-view-stats"
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+                currentView === 'stats'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'stats' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.Chart />
+              <span>Statistics</span>
+            </button>
+          </nav>
+        </div>
 
-        {currentView === 'add' && (
-          <AddEditWordView
-            editingWord={editingWord}
-            onSave={saveWord}
-            onCancel={() => {
-              setEditingWord(null);
-              setCurrentView('list');
-            }}
-          />
-        )}
+        {/* Content Area */}
+        <div className="px-4 py-6">
+          {currentView === 'list' && (
+            <WordListView
+              words={filteredWords}
+              allWords={words}
+              allTags={allTags}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              onEdit={(word) => {
+                setEditingWord(word);
+                setCurrentView('add');
+              }}
+              onDelete={deleteWord}
+              onSpeak={speakWord}
+            />
+          )}
 
-        {currentView === 'flashcards' && (
-          <FlashcardsView words={filteredWords} onSpeak={speakWord} onReview={updateWordProgress} />
-        )}
+          {currentView === 'add' && (
+            <AddEditWordView
+              editingWord={editingWord}
+              onSave={saveWord}
+              onCancel={() => {
+                setEditingWord(null);
+                setCurrentView('list');
+              }}
+            />
+          )}
 
-        {currentView === 'quiz' && <QuizView words={filteredWords} />}
+          {currentView === 'flashcards' && (
+            <FlashcardsView words={filteredWords} onSpeak={speakWord} onReview={updateWordProgress} />
+          )}
 
-        {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
+          {currentView === 'quiz' && <QuizView words={filteredWords} />}
+
+          {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
+        </div>
       </main>
     </div>
   );
@@ -1203,9 +1208,11 @@ function FlashcardsView({ words, onSpeak, onReview }: { words: Word[]; onSpeak: 
   };
 
   const handleFlip = () => {
+    setFlipped(!flipped);
     if (!flipped) {
-      setFlipped(true);
       setShowRating(true);
+    } else {
+      setShowRating(false);
     }
   };
 
