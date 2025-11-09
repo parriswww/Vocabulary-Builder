@@ -552,7 +552,7 @@ function App() {
       <main className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Sticky Navigation Container */}
         <div className="sticky top-0 z-50 bg-gradient-to-r from-orange-500 to-orange-600 px-4 pt-2 pb-4 shadow-lg">
-          <nav className="space-y-2" data-testid="nav-vertical">
+          <nav className="flex items-stretch gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} data-testid="nav-horizontal">
             <button
               onClick={() => setCurrentView('list')}
               data-testid="button-view-list"
