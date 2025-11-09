@@ -4,13 +4,24 @@
 
 A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. Designed to feel like a native mobile app with vertical navigation, vibrant gradient UI, and no browser chrome. Features include flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, statistics dashboard, and integration with the Datamuse API.
 
-## Recent Changes (October 30, 2025)
+## Recent Changes (November 9, 2025)
 
-**Mobile App Transformation:**
-- Redesigned UI to look like a native mobile app with vertical navigation
+**Help Dialog & Horizontal Navigation:**
+- Added help button (question mark icon) in header to the left of streak counter
+- Comprehensive help dialog explaining all app features and icons:
+  * Header icons (Help, Daily Streak Counter, Dark Mode Toggle)
+  * Navigation buttons (Word List, Add New Word, Flashcards, Quiz, Statistics)
+  * Word actions (Audio/Speaker, Edit, Delete, Search)
+  * Learning features (Spaced Repetition, Mastery Levels, Cross-Device Sync)
+- Converted navigation from vertical to horizontal scrollable layout
+- Navigation buttons now arranged in a row with horizontal scroll on narrow screens
+- Sticky navigation behavior preserved with improved mobile touch-friendliness
+
+**Previous Updates (October 30, 2025):**
+- Redesigned UI to look like a native mobile app
 - Orange gradient header (from-orange-500 to-orange-600)
 - Orange "📚 Vocabulary Builder" title in white text
-- Vertical 3D rounded rectangle navigation buttons with scale/shadow effects
+- 3D rounded rectangle navigation buttons with scale/shadow effects
 - White interior search bar (independent of theme)
 - Gradient word cards (blue-to-purple) with white text
 - Splash screen with gradient background and loading spinner
