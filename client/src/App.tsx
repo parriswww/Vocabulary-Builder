@@ -113,6 +113,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   ),
+  HelpCircle: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
@@ -140,6 +145,7 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
 
   // Dark mode effect
   useEffect(() => {
@@ -532,6 +538,14 @@ function App() {
             📚 Vocabulary Builder
           </h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowHelpDialog(true)}
+              data-testid="button-help"
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Help"
+            >
+              <Icons.HelpCircle />
+            </button>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white">
               <Icons.Fire />
               <span className="font-semibold" data-testid="text-streak">{metadata.streak}</span>
@@ -548,6 +562,193 @@ function App() {
         </div>
       </header>
 
+      {/* Help Dialog */}
+      {showHelpDialog && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowHelpDialog(false)}
+          data-testid="dialog-help-overlay"
+        >
+          <div 
+            className="bg-card border border-card-border rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="dialog-help"
+          >
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">App Guide</h2>
+              <button
+                onClick={() => setShowHelpDialog(false)}
+                data-testid="button-close-help"
+                className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                aria-label="Close help"
+              >
+                <Icons.X />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Header Icons */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Icons.Book />
+                  Header Icons
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm flex-shrink-0">
+                      <Icons.HelpCircle />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Help Button</div>
+                      <div className="text-muted-foreground">Opens this guide to explain all features</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm flex-shrink-0 flex items-center gap-2">
+                      <Icons.Fire />
+                      <span className="font-semibold">{metadata.streak}</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Daily Streak Counter</div>
+                      <div className="text-muted-foreground">Shows how many consecutive days you've practiced. Visit daily to keep your streak alive!</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm flex-shrink-0">
+                      {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Dark Mode Toggle</div>
+                      <div className="text-muted-foreground">Switch between light and dark theme for comfortable reading</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Icons.List />
+                  Navigation Buttons
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.List />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Word List</div>
+                      <div className="text-muted-foreground">Browse all your saved words with search and filtering options</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Plus />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Add New Word</div>
+                      <div className="text-muted-foreground">Add vocabulary words with definitions, tags, and example sentences</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Cards />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Flashcards</div>
+                      <div className="text-muted-foreground">Review words with interactive flashcards. Click to flip and rate your memory (uses spaced repetition)</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Quiz />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Quiz</div>
+                      <div className="text-muted-foreground">Test yourself with multiple-choice questions to reinforce learning</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Chart />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Statistics</div>
+                      <div className="text-muted-foreground">Track your progress with detailed stats and mastery levels</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Word Actions */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Icons.Cards />
+                  Word Actions
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Speaker />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Audio/Speaker Button</div>
+                      <div className="text-muted-foreground">Click to hear the word pronounced using text-to-speech</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Edit />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Edit Button</div>
+                      <div className="text-muted-foreground">Modify word details, definitions, tags, or example sentences</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Trash />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Delete Button</div>
+                      <div className="text-muted-foreground">Remove a word from your vocabulary list</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-secondary/20 rounded-lg">
+                    <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+                      <Icons.Search />
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">Search Bar</div>
+                      <div className="text-muted-foreground">Find words quickly by typing in the search box on the Word List page</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Learning Features */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Learning Features</h3>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p className="flex items-start gap-2">
+                    <Icons.Check />
+                    <span><strong className="text-foreground">Spaced Repetition:</strong> Words are scheduled for review based on how well you remember them</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <Icons.Check />
+                    <span><strong className="text-foreground">Mastery Levels:</strong> Track progress from "Learning" → "Reviewing" → "Mastered"</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <Icons.Check />
+                    <span><strong className="text-foreground">Cross-Device Sync:</strong> Your words automatically sync across all your devices via Firebase</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Sticky Navigation Container */}
@@ -556,7 +757,7 @@ function App() {
             <button
               onClick={() => setCurrentView('list')}
               data-testid="button-view-list"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
                 currentView === 'list'
                   ? 'bg-white text-orange-600 shadow-xl scale-105'
                   : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
@@ -574,7 +775,7 @@ function App() {
                 setCurrentView('add');
               }}
               data-testid="button-view-add"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
                 currentView === 'add'
                   ? 'bg-white text-orange-600 shadow-xl scale-105'
                   : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
@@ -589,7 +790,7 @@ function App() {
             <button
               onClick={() => setCurrentView('flashcards')}
               data-testid="button-view-flashcards"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
                 currentView === 'flashcards'
                   ? 'bg-white text-orange-600 shadow-xl scale-105'
                   : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
@@ -604,7 +805,7 @@ function App() {
             <button
               onClick={() => setCurrentView('quiz')}
               data-testid="button-view-quiz"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
                 currentView === 'quiz'
                   ? 'bg-white text-orange-600 shadow-xl scale-105'
                   : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
@@ -619,7 +820,7 @@ function App() {
             <button
               onClick={() => setCurrentView('stats')}
               data-testid="button-view-stats"
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all transform ${
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
                 currentView === 'stats'
                   ? 'bg-white text-orange-600 shadow-xl scale-105'
                   : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
