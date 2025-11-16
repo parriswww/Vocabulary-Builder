@@ -1,6 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, type Auth, type User } from 'firebase/auth';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  onAuthStateChanged,
+  type Auth, 
+  type User 
+} from 'firebase/auth';
 import {
   getFirestore,
   collection,
@@ -118,6 +129,26 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  User: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  ),
+  Logout: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  ),
+  Mail: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ),
+  Lock: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ),
 };
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
@@ -146,6 +177,8 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authError, setAuthError] = useState<string>('');
 
   // Dark mode effect
   useEffect(() => {
@@ -209,22 +242,13 @@ function App() {
         setAuth(authInstance);
         setDb(dbInstance);
 
-        // Sign in with provided token or anonymously
-        const authToken = window.__initial_auth_token;
-        let userCredential;
-        
-        if (authToken) {
-          try {
-            userCredential = await signInWithCustomToken(authInstance, authToken);
-          } catch (tokenError) {
-            console.warn('Custom token sign-in failed, falling back to anonymous:', tokenError);
-            userCredential = await signInAnonymously(authInstance);
-          }
-        } else {
-          userCredential = await signInAnonymously(authInstance);
-        }
-        
-        setUser(userCredential.user);
+        // Listen to auth state changes
+        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+          setUser(user);
+          setLoading(false);
+        });
+
+        return unsubscribe;
       } catch (error) {
         console.error('Firebase initialization error:', error);
         console.warn('App will run in demo mode without Firebase persistence');
@@ -529,6 +553,217 @@ function App() {
     return null; // Splash screen is shown from HTML
   }
 
+  // Authentication handlers
+  const handleSignup = async (email: string, password: string, displayName: string) => {
+    if (!auth) return;
+    
+    setAuthError('');
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName });
+      
+      // Store user profile in Firestore (merge to preserve existing streak/stats)
+      if (db) {
+        const appId = window.__app_id;
+        const userPath = `artifacts/${appId}/users/${userCredential.user.uid}`;
+        await setDoc(doc(db, `${userPath}/metadata/profile`), {
+          displayName,
+          email,
+          createdAt: Date.now(),
+        }, { merge: true });
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      setAuthError(error.message || 'Failed to create account');
+    }
+  };
+
+  const handleLogin = async (email: string, password: string) => {
+    if (!auth) return;
+    
+    setAuthError('');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setAuthError(error.message || 'Failed to log in');
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Show login/signup screen if not authenticated
+  if (!user) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        {/* Header */}
+        <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">
+              📚 Vocabulary Builder
+            </h1>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              data-testid="button-dark-mode-auth"
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
+          </div>
+        </header>
+
+        {/* Auth Form */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <div className="bg-card border border-card-border rounded-lg p-6 shadow-xl">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-2">📚</div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">
+                  {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                </h2>
+                <p className="text-muted-foreground">
+                  {authMode === 'login' 
+                    ? 'Log in to access your vocabulary' 
+                    : 'Start building your vocabulary today'}
+                </p>
+              </div>
+
+              {authError && (
+                <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm" data-testid="auth-error">
+                  {authError}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const email = formData.get('email') as string;
+                  const password = formData.get('password') as string;
+                  const displayName = formData.get('displayName') as string;
+
+                  if (authMode === 'signup') {
+                    handleSignup(email, password, displayName);
+                  } else {
+                    handleLogin(email, password);
+                  }
+                }}
+                className="space-y-4"
+              >
+                {authMode === 'signup' && (
+                  <div>
+                    <label htmlFor="displayName" className="block text-sm font-medium text-foreground mb-1">
+                      Display Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                        <Icons.User />
+                      </div>
+                      <input
+                        type="text"
+                        id="displayName"
+                        name="displayName"
+                        required
+                        data-testid="input-display-name"
+                        className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                        placeholder="Your name"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                      <Icons.Mail />
+                    </div>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      required
+                      data-testid="input-email"
+                      className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                      <Icons.Lock />
+                    </div>
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      required
+                      minLength={6}
+                      data-testid="input-password"
+                      className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  {authMode === 'signup' && (
+                    <p className="mt-1 text-xs text-muted-foreground">Must be at least 6 characters</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  data-testid="button-auth-submit"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
+                >
+                  {authMode === 'login' ? 'Log In' : 'Create Account'}
+                </button>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => {
+                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                    setAuthError('');
+                  }}
+                  data-testid="button-auth-toggle"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {authMode === 'login' ? (
+                    <>
+                      Don't have an account? <span className="text-primary font-medium">Sign up</span>
+                    </>
+                  ) : (
+                    <>
+                      Already have an account? <span className="text-primary font-medium">Log in</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Your account will sync across all your devices
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Mobile Header */}
@@ -537,7 +772,7 @@ function App() {
           <h1 className="text-2xl font-bold text-white" data-testid="text-title">
             📚 Vocabulary Builder
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHelpDialog(true)}
               data-testid="button-help"
@@ -557,6 +792,17 @@ function App() {
               aria-label="Toggle dark mode"
             >
               {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
+            <button
+              onClick={handleLogout}
+              data-testid="button-logout"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Logout"
+              title={`Logged in as ${user?.displayName || user?.email || 'User'}`}
+            >
+              <Icons.User />
+              <span className="text-sm font-medium hidden sm:inline">{user?.displayName || 'User'}</span>
+              <Icons.Logout />
             </button>
           </div>
         </div>
