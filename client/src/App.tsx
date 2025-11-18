@@ -6,6 +6,7 @@ import {
   signInWithCustomToken,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   updateProfile,
   signOut,
   onAuthStateChanged,
@@ -177,8 +178,9 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
   const [showHelpDialog, setShowHelpDialog] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'reset'>('login');
   const [authError, setAuthError] = useState<string>('');
+  const [authSuccess, setAuthSuccess] = useState<string>('');
 
   // Dark mode effect
   useEffect(() => {
@@ -599,6 +601,20 @@ function App() {
     }
   };
 
+  const handlePasswordReset = async (email: string) => {
+    if (!auth) return;
+    
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setAuthSuccess('Password reset email sent! Check your inbox.');
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      setAuthError(error.message || 'Failed to send password reset email');
+    }
+  };
+
   // Show login/signup screen if not authenticated
   if (!user) {
     return (
@@ -627,18 +643,26 @@ function App() {
               <div className="text-center mb-6">
                 <div className="text-4xl mb-2">📚</div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">
-                  {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                  {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Reset Password'}
                 </h2>
                 <p className="text-muted-foreground">
                   {authMode === 'login' 
                     ? 'Log in to access your vocabulary' 
-                    : 'Start building your vocabulary today'}
+                    : authMode === 'signup'
+                    ? 'Start building your vocabulary today'
+                    : 'Enter your email to receive a password reset link'}
                 </p>
               </div>
 
               {authError && (
                 <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm" data-testid="auth-error">
                   {authError}
+                </div>
+              )}
+
+              {authSuccess && (
+                <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-600 dark:text-green-400 text-sm" data-testid="auth-success">
+                  {authSuccess}
                 </div>
               )}
 
@@ -650,7 +674,9 @@ function App() {
                   const password = formData.get('password') as string;
                   const displayName = formData.get('displayName') as string;
 
-                  if (authMode === 'signup') {
+                  if (authMode === 'reset') {
+                    handlePasswordReset(email);
+                  } else if (authMode === 'signup') {
                     handleSignup(email, password, displayName);
                   } else {
                     handleLogin(email, password);
@@ -700,49 +726,76 @@ function App() {
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-                      <Icons.Lock />
+                {authMode !== 'reset' && (
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                        <Icons.Lock />
+                      </div>
+                      <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        minLength={6}
+                        data-testid="input-password"
+                        className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                        placeholder="••••••••"
+                      />
                     </div>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      required
-                      minLength={6}
-                      data-testid="input-password"
-                      className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                      placeholder="••••••••"
-                    />
+                    {authMode === 'signup' && (
+                      <p className="mt-1 text-xs text-muted-foreground">Must be at least 6 characters</p>
+                    )}
                   </div>
-                  {authMode === 'signup' && (
-                    <p className="mt-1 text-xs text-muted-foreground">Must be at least 6 characters</p>
-                  )}
-                </div>
+                )}
 
                 <button
                   type="submit"
                   data-testid="button-auth-submit"
                   className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
                 >
-                  {authMode === 'login' ? 'Log In' : 'Create Account'}
+                  {authMode === 'login' ? 'Log In' : authMode === 'signup' ? 'Create Account' : 'Send Reset Email'}
                 </button>
               </form>
+
+              {authMode === 'login' && (
+                <div className="mt-3 text-center">
+                  <button
+                    onClick={() => {
+                      setAuthMode('reset');
+                      setAuthError('');
+                      setAuthSuccess('');
+                    }}
+                    data-testid="button-forgot-password"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
 
               <div className="mt-4 text-center">
                 <button
                   onClick={() => {
-                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                    if (authMode === 'reset') {
+                      setAuthMode('login');
+                    } else {
+                      setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                    }
                     setAuthError('');
+                    setAuthSuccess('');
                   }}
                   data-testid="button-auth-toggle"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {authMode === 'login' ? (
+                  {authMode === 'reset' ? (
+                    <>
+                      Remember your password? <span className="text-primary font-medium">Log in</span>
+                    </>
+                  ) : authMode === 'login' ? (
                     <>
                       Don't have an account? <span className="text-primary font-medium">Sign up</span>
                     </>
