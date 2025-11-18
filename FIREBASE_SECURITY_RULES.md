@@ -91,7 +91,8 @@ After publishing the rules, you can test them in the Firebase Console:
 
 - **Email/Password Authentication**: Users create accounts with email and password. Their data syncs across all devices when they log in with the same account.
 - **Secure Passwords**: Firebase automatically enforces a minimum password length of 6 characters. Users should choose strong, unique passwords.
-- **Account Recovery**: Firebase provides built-in password reset functionality via email (can be configured in Authentication settings).
+- **Password Reset**: Users can reset their password by clicking "Forgot password?" on the login screen. Firebase sends a secure password reset link to their email address.
+- **Account Recovery**: If users forget their password, they can use the password reset feature to regain access to their account without losing any vocabulary data.
 - **Data Isolation**: Each user's vocabulary data is completely isolated - users can only access their own words and statistics.
 - **Cross-Device Sync**: When users log in on a new device, all their vocabulary words automatically sync from Firestore.
 - **Data Migration**: If you have existing test data in your database, make sure it follows the correct path structure: `/artifacts/{appId}/users/{userId}/...`

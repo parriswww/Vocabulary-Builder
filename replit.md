@@ -4,7 +4,17 @@
 
 A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. Designed to feel like a native mobile app with vertical navigation, vibrant gradient UI, and no browser chrome. Features include flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, statistics dashboard, and integration with the Datamuse API.
 
-## Recent Changes (November 9, 2025)
+## Recent Changes (November 18, 2025)
+
+**Password Reset Feature:**
+- Added "Forgot password?" link on login screen for easy password recovery
+- Users can request password reset email by entering their email address
+- Firebase sends secure password reset link directly to user's inbox
+- Success and error messages provide clear feedback during reset process
+- Seamless integration with existing login/signup flow
+- Updated FIREBASE_SECURITY_RULES.md with password reset documentation
+
+**Previous Updates (November 9, 2025):**
 
 **Help Dialog & Horizontal Navigation:**
 - Added help button (question mark icon) in header to the left of streak counter
