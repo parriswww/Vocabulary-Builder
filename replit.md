@@ -6,6 +6,15 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 
 ## Recent Changes (December 3, 2025)
 
+**Privacy Policy & Terms of Service:**
+- Added Privacy Policy and Terms of Service pages
+- Legal links appear in footer on login page (GDPR/CCPA compliant placement)
+- Legal links also appear in footer of main app content
+- Full Privacy Policy covers data collection, third-party services (AdSense, Paddle, Firebase)
+- Terms of Service covers user accounts, payments, acceptable use
+- Contact email: ace.apps.44@gmail.com
+- Legal content stored in `client/src/legal/privacy-policy.ts`
+
 **Monetization with Paddle & AdSense:**
 - Integrated Google AdSense for displaying ads to free users
 - Ad banners appear at top and bottom of all pages/tabs

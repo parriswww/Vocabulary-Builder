@@ -28,6 +28,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { Word, InsertWord, UserMetadata, Subscription } from '@shared/schema';
+import { privacyPolicyContent, termsOfServiceContent } from './legal/privacy-policy';
 
 // Paddle types
 declare global {
@@ -186,7 +187,7 @@ const Icons = {
   ),
 };
 
-type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
+type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms';
 
 // AdSense Banner Component - shows ads for free users
 function AdBanner({ isPremium }: { isPremium: boolean }) {
@@ -908,6 +909,125 @@ function App() {
 
   // Show login/signup screen if not authenticated
   if (!user) {
+    // Show legal pages on auth screen
+    if (authMode === 'privacy' as any || authMode === 'terms' as any) {
+      const legalType = authMode as unknown as 'privacy' | 'terms';
+      const content = legalType === 'privacy' ? privacyPolicyContent : termsOfServiceContent;
+      const title = legalType === 'privacy' ? 'Privacy Policy' : 'Terms of Service';
+      
+      return (
+        <div className="h-screen flex flex-col bg-background">
+          {/* Header */}
+          <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setAuthMode('login')}
+                  className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                  data-testid="button-legal-back-auth"
+                >
+                  <Icons.ChevronLeft />
+                </button>
+                <h1 className="text-xl font-bold text-white">{title}</h1>
+              </div>
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                data-testid="button-dark-mode-auth"
+                className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+              </button>
+            </div>
+          </header>
+
+          {/* Legal Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="max-w-2xl mx-auto bg-card border border-card-border rounded-lg p-6">
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                {content.split('\n').map((line, index) => {
+                  if (line.startsWith('# ')) {
+                    return <h1 key={index} className="text-2xl font-bold text-foreground mb-4">{line.slice(2)}</h1>;
+                  }
+                  if (line.startsWith('## ')) {
+                    return <h2 key={index} className="text-xl font-semibold text-foreground mt-6 mb-3">{line.slice(3)}</h2>;
+                  }
+                  if (line.startsWith('### ')) {
+                    return <h3 key={index} className="text-lg font-medium text-foreground mt-4 mb-2">{line.slice(4)}</h3>;
+                  }
+                  if (line.includes('**')) {
+                    const parts = line.split('**');
+                    return (
+                      <p key={index} className="text-muted-foreground mb-2">
+                        {parts.map((part, i) => 
+                          i % 2 === 1 ? <strong key={i} className="text-foreground">{part}</strong> : part
+                        )}
+                      </p>
+                    );
+                  }
+                  if (line.startsWith('- ')) {
+                    return (
+                      <li key={index} className="text-muted-foreground ml-4 mb-1">
+                        {line.slice(2)}
+                      </li>
+                    );
+                  }
+                  if (line.includes('[') && line.includes('](')) {
+                    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+                    const parts: (string | JSX.Element)[] = [];
+                    let lastIndex = 0;
+                    let match;
+                    while ((match = linkRegex.exec(line)) !== null) {
+                      if (match.index > lastIndex) {
+                        parts.push(line.slice(lastIndex, match.index));
+                      }
+                      parts.push(
+                        <a 
+                          key={match.index}
+                          href={match[2]} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-primary hover:underline"
+                        >
+                          {match[1]}
+                        </a>
+                      );
+                      lastIndex = match.index + match[0].length;
+                    }
+                    if (lastIndex < line.length) {
+                      parts.push(line.slice(lastIndex));
+                    }
+                    return <p key={index} className="text-muted-foreground mb-2">{parts}</p>;
+                  }
+                  if (line.trim() === '') {
+                    return <div key={index} className="h-2" />;
+                  }
+                  return <p key={index} className="text-muted-foreground mb-2">{line}</p>;
+                })}
+              </div>
+            </div>
+
+            {/* Contact and Back Button */}
+            <div className="max-w-2xl mx-auto mt-6 text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Questions? Contact us at{' '}
+                <a href="mailto:ace.apps.44@gmail.com" className="text-primary hover:underline">
+                  ace.apps.44@gmail.com
+                </a>
+              </p>
+              <button
+                onClick={() => setAuthMode('login')}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover-elevate"
+                data-testid="button-back-to-login"
+              >
+                Back to Login
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
@@ -1102,6 +1222,32 @@ function App() {
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Your account will sync across all your devices
             </p>
+
+            {/* Legal Links Footer */}
+            <div className="mt-6 pt-4 border-t border-border">
+              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setAuthMode('privacy' as any)}
+                    className="hover:text-foreground transition-colors"
+                    data-testid="link-privacy-policy-auth"
+                  >
+                    Privacy Policy
+                  </button>
+                  <span className="text-muted">|</span>
+                  <button
+                    onClick={() => setAuthMode('terms' as any)}
+                    className="hover:text-foreground transition-colors"
+                    data-testid="link-terms-of-service-auth"
+                  >
+                    Terms of Service
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  © {new Date().getFullYear()} ACE-Apps. All rights reserved.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1497,6 +1643,14 @@ function App() {
 
           {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
 
+          {currentView === 'privacy' && (
+            <LegalView type="privacy" onBack={() => setCurrentView('list')} />
+          )}
+
+          {currentView === 'terms' && (
+            <LegalView type="terms" onBack={() => setCurrentView('list')} />
+          )}
+
           {/* Bottom Ad Banner - Shows on all pages for free users */}
           <AdBanner isPremium={subscription.isPremium} />
 
@@ -1523,6 +1677,32 @@ function App() {
               </div>
             </div>
           )}
+
+          {/* Footer with Legal Links */}
+          <footer className="mt-8 pt-6 border-t border-border">
+            <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setCurrentView('privacy')}
+                  className="hover:text-foreground transition-colors"
+                  data-testid="link-privacy-policy"
+                >
+                  Privacy Policy
+                </button>
+                <span className="text-muted">|</span>
+                <button
+                  onClick={() => setCurrentView('terms')}
+                  className="hover:text-foreground transition-colors"
+                  data-testid="link-terms-of-service"
+                >
+                  Terms of Service
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground/70">
+                © {new Date().getFullYear()} ACE-Apps. All rights reserved.
+              </p>
+            </div>
+          </footer>
         </div>
       </main>
     </div>
@@ -2583,6 +2763,119 @@ function StatisticsView({ words, metadata }: { words: Word[]; metadata: UserMeta
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Legal Page View Component
+function LegalView({ 
+  type, 
+  onBack 
+}: { 
+  type: 'privacy' | 'terms'; 
+  onBack: () => void;
+}) {
+  const content = type === 'privacy' ? privacyPolicyContent : termsOfServiceContent;
+  const title = type === 'privacy' ? 'Privacy Policy' : 'Terms of Service';
+
+  return (
+    <div className="space-y-6" data-testid={`legal-${type}`}>
+      {/* Header with back button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onBack}
+          className="p-2 hover-elevate rounded-lg"
+          data-testid="button-legal-back"
+        >
+          <Icons.ChevronLeft />
+        </button>
+        <h1 className="text-xl font-bold text-foreground">{title}</h1>
+      </div>
+
+      {/* Content */}
+      <div className="bg-card border border-card-border rounded-lg p-6">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          {content.split('\n').map((line, index) => {
+            // Handle headers
+            if (line.startsWith('# ')) {
+              return <h1 key={index} className="text-2xl font-bold text-foreground mb-4">{line.slice(2)}</h1>;
+            }
+            if (line.startsWith('## ')) {
+              return <h2 key={index} className="text-xl font-semibold text-foreground mt-6 mb-3">{line.slice(3)}</h2>;
+            }
+            if (line.startsWith('### ')) {
+              return <h3 key={index} className="text-lg font-medium text-foreground mt-4 mb-2">{line.slice(4)}</h3>;
+            }
+            // Handle bold text with **
+            if (line.includes('**')) {
+              const parts = line.split('**');
+              return (
+                <p key={index} className="text-muted-foreground mb-2">
+                  {parts.map((part, i) => 
+                    i % 2 === 1 ? <strong key={i} className="text-foreground">{part}</strong> : part
+                  )}
+                </p>
+              );
+            }
+            // Handle list items
+            if (line.startsWith('- ')) {
+              return (
+                <li key={index} className="text-muted-foreground ml-4 mb-1">
+                  {line.slice(2)}
+                </li>
+              );
+            }
+            // Handle links (basic markdown link parsing)
+            if (line.includes('[') && line.includes('](')) {
+              const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+              const parts = [];
+              let lastIndex = 0;
+              let match;
+              while ((match = linkRegex.exec(line)) !== null) {
+                if (match.index > lastIndex) {
+                  parts.push(line.slice(lastIndex, match.index));
+                }
+                parts.push(
+                  <a 
+                    key={match.index}
+                    href={match[2]} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-primary hover:underline"
+                  >
+                    {match[1]}
+                  </a>
+                );
+                lastIndex = match.index + match[0].length;
+              }
+              if (lastIndex < line.length) {
+                parts.push(line.slice(lastIndex));
+              }
+              return <p key={index} className="text-muted-foreground mb-2">{parts}</p>;
+            }
+            // Empty lines
+            if (line.trim() === '') {
+              return <div key={index} className="h-2" />;
+            }
+            // Regular text
+            return <p key={index} className="text-muted-foreground mb-2">{line}</p>;
+          })}
+        </div>
+      </div>
+
+      {/* Contact Info */}
+      <div className="bg-muted/30 rounded-lg p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Questions? Contact us at{' '}
+          <a 
+            href="mailto:ace.apps.44@gmail.com" 
+            className="text-primary hover:underline"
+            data-testid="link-contact-email"
+          >
+            ace.apps.44@gmail.com
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
