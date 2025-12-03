@@ -2,12 +2,18 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import type { Subscription, PaddleWebhookEvent } from "@shared/schema";
+import path from "path";
 
 const PADDLE_API_URL = process.env.PADDLE_ENVIRONMENT === 'production' 
   ? 'https://api.paddle.com' 
   : 'https://sandbox-api.paddle.com';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // AdSense ads.txt verification file
+  app.get('/ads.txt', (_req, res) => {
+    res.type('text/plain').send('google.com, pub-5351173673483508, DIRECT, f08c47fec0942fa0\n');
+  });
+
   // Firebase config endpoint
   app.get('/api/firebase-config', (_req, res) => {
     const config = {

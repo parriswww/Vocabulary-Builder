@@ -215,7 +215,7 @@ function AdBanner({ isPremium }: { isPremium: boolean }) {
         <ins
           className="adsbygoogle"
           style={{ display: 'block', width: '100%', minHeight: '100px' }}
-          data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+          data-ad-client="ca-pub-5351173673483508"
           data-ad-slot="YOUR_AD_SLOT_ID"
           data-ad-format="auto"
           data-full-width-responsive="true"
