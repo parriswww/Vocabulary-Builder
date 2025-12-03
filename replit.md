@@ -4,7 +4,21 @@
 
 A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. Designed to feel like a native mobile app with vertical navigation, vibrant gradient UI, and no browser chrome. Features include flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, statistics dashboard, and integration with the Datamuse API.
 
-## Recent Changes (November 18, 2025)
+## Recent Changes (December 3, 2025)
+
+**Monetization with Paddle & AdSense:**
+- Integrated Google AdSense for displaying ads to free users
+- Ad banners appear at top and bottom of all pages/tabs
+- Paddle payment integration for $5 ad-free premium subscription
+- Premium upgrade button in header (shows crown icon)
+- Upgrade dialog with clear pricing and benefits
+- Premium users see "Premium" badge instead of upgrade button
+- Subscription status stored in Firestore at `users/{userId}/metadata/subscription`
+- Paddle webhook handler at `/api/webhooks/paddle` for subscription events
+- Customer portal integration for subscription management
+- See PADDLE_SETUP.md for configuration instructions
+
+**Previous Updates (November 18, 2025):**
 
 **Password Reset Feature:**
 - Added "Forgot password?" link on login screen for easy password recovery

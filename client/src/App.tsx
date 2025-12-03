@@ -188,6 +188,130 @@ const Icons = {
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
 
+// AdSense Banner Component - shows ads for free users
+function AdBanner({ isPremium }: { isPremium: boolean }) {
+  useEffect(() => {
+    // Only try to load ads for non-premium users
+    if (!isPremium) {
+      try {
+        // Push ad to AdSense
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+      } catch (e) {
+        console.warn('AdSense not available');
+      }
+    }
+  }, [isPremium]);
+
+  // Don't render anything for premium users
+  if (isPremium) {
+    return null;
+  }
+
+  return (
+    <div className="w-full flex justify-center my-4" data-testid="ad-banner">
+      <div className="w-full max-w-md bg-muted/30 rounded-lg overflow-hidden min-h-[100px] flex items-center justify-center">
+        {/* AdSense Ad Unit - Replace data-ad-slot with your actual ad slot ID */}
+        <ins
+          className="adsbygoogle"
+          style={{ display: 'block', width: '100%', minHeight: '100px' }}
+          data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+          data-ad-slot="YOUR_AD_SLOT_ID"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+        {/* Fallback text when ads don't load */}
+        <span className="text-muted-foreground text-sm absolute pointer-events-none">
+          Advertisement
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Premium Upgrade Dialog Component
+function UpgradeDialog({ 
+  isOpen, 
+  onClose, 
+  onUpgrade, 
+  isReady 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onUpgrade: () => void; 
+  isReady: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+      data-testid="dialog-upgrade-overlay"
+    >
+      <div 
+        className="bg-card border border-card-border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="dialog-upgrade"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-6 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
+            <Icons.Crown />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Go Premium</h2>
+          <p className="text-white/80 mt-1">Remove ads and support development</p>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="text-4xl font-bold text-foreground">$5</div>
+            <div className="text-muted-foreground">one-time payment</div>
+          </div>
+
+          <ul className="space-y-3 mb-6">
+            <li className="flex items-center gap-3 text-foreground">
+              <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <Icons.Check />
+              </div>
+              <span>Ad-free experience forever</span>
+            </li>
+            <li className="flex items-center gap-3 text-foreground">
+              <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <Icons.Check />
+              </div>
+              <span>Support future development</span>
+            </li>
+            <li className="flex items-center gap-3 text-foreground">
+              <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <Icons.Check />
+              </div>
+              <span>All features included</span>
+            </li>
+          </ul>
+
+          <button
+            onClick={onUpgrade}
+            disabled={!isReady}
+            data-testid="button-upgrade-confirm"
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isReady ? 'Upgrade Now' : 'Loading...'}
+          </button>
+
+          <button
+            onClick={onClose}
+            data-testid="button-upgrade-cancel"
+            className="w-full mt-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Maybe later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [firebaseApp, setFirebaseApp] = useState<FirebaseApp | null>(null);
   const [auth, setAuth] = useState<Auth | null>(null);
@@ -993,6 +1117,28 @@ function App() {
             📚 Vocabulary Builder
           </h1>
           <div className="flex items-center gap-2">
+            {/* Premium Badge or Upgrade Button */}
+            {subscription.isPremium ? (
+              <button
+                onClick={handleManageSubscription}
+                data-testid="button-premium-badge"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:from-yellow-500 hover:to-orange-500 transition-colors shadow-md"
+                title="Manage subscription"
+              >
+                <Icons.Crown />
+                <span className="text-xs font-semibold hidden sm:inline">Premium</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowUpgradeDialog(true)}
+                data-testid="button-upgrade"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:from-yellow-500 hover:to-orange-500 transition-colors shadow-md animate-pulse"
+                title="Upgrade to Premium - Remove Ads"
+              >
+                <Icons.Crown />
+                <span className="text-xs font-semibold hidden sm:inline">Upgrade</span>
+              </button>
+            )}
             <button
               onClick={() => setShowHelpDialog(true)}
               data-testid="button-help"
@@ -1027,6 +1173,14 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Premium Upgrade Dialog */}
+      <UpgradeDialog
+        isOpen={showUpgradeDialog}
+        onClose={() => setShowUpgradeDialog(false)}
+        onUpgrade={handleUpgrade}
+        isReady={paddleInitialized}
+      />
 
       {/* Help Dialog */}
       {showHelpDialog && (
@@ -1303,6 +1457,9 @@ function App() {
 
         {/* Content Area */}
         <div className="px-4 py-6">
+          {/* Top Ad Banner - Shows on all pages for free users */}
+          <AdBanner isPremium={subscription.isPremium} />
+
           {currentView === 'list' && (
             <WordListView
               words={filteredWords}
@@ -1339,6 +1496,33 @@ function App() {
           {currentView === 'quiz' && <QuizView words={filteredWords} />}
 
           {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
+
+          {/* Bottom Ad Banner - Shows on all pages for free users */}
+          <AdBanner isPremium={subscription.isPremium} />
+
+          {/* Upgrade prompt for free users */}
+          {!subscription.isPremium && (
+            <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full text-white">
+                    <Icons.Crown />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Remove Ads for $5</p>
+                    <p className="text-sm text-muted-foreground">One-time payment, ad-free forever</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeDialog(true)}
+                  data-testid="button-upgrade-bottom"
+                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg font-medium hover:from-yellow-600 hover:to-orange-600 transition-colors shadow-md"
+                >
+                  Upgrade
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
