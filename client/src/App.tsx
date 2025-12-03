@@ -27,15 +27,34 @@ import {
   onSnapshot,
   type Firestore,
 } from 'firebase/firestore';
-import type { Word, InsertWord, UserMetadata } from '@shared/schema';
+import type { Word, InsertWord, UserMetadata, Subscription } from '@shared/schema';
 
-// Global Firebase configuration from window
+// Paddle types
 declare global {
   interface Window {
     __firebase_config: any;
     __app_id: string;
     __initial_auth_token?: string;
+    Paddle?: {
+      Initialize: (options: { token: string; environment?: string }) => void;
+      Checkout: {
+        open: (options: {
+          items: Array<{ priceId: string; quantity: number }>;
+          customer?: { email: string };
+          customData?: { userId: string };
+          successCallback?: () => void;
+          closeCallback?: () => void;
+        }) => void;
+      };
+    };
   }
+}
+
+// Paddle configuration type
+interface PaddleConfig {
+  clientToken: string;
+  environment: string;
+  priceId: string;
 }
 
 // Inline SVG Icons
@@ -150,6 +169,21 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
     </svg>
   ),
+  Crown: () => (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .55-.45 1-1 1H6c-.55 0-1-.45-1-1v-1h14v1z" />
+    </svg>
+  ),
+  Star: () => (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+    </svg>
+  ),
+  XCircle: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats';
@@ -181,6 +215,21 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'reset'>('login');
   const [authError, setAuthError] = useState<string>('');
   const [authSuccess, setAuthSuccess] = useState<string>('');
+  
+  // Subscription state for premium features
+  const [subscription, setSubscription] = useState<Subscription>({
+    isPremium: false,
+    subscriptionId: null,
+    customerId: null,
+    status: 'none',
+    priceId: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    updatedAt: null,
+  });
+  const [paddleConfig, setPaddleConfig] = useState<PaddleConfig | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [paddleInitialized, setPaddleInitialized] = useState(false);
 
   // Dark mode effect
   useEffect(() => {
@@ -261,6 +310,124 @@ function App() {
 
     initFirebase();
   }, []);
+
+  // Initialize Paddle for payments
+  useEffect(() => {
+    const initPaddle = async () => {
+      try {
+        const response = await fetch('/api/paddle-config');
+        const config = await response.json();
+        
+        if (config.clientToken) {
+          setPaddleConfig(config);
+          
+          // Initialize Paddle.js when it's loaded
+          const checkPaddle = setInterval(() => {
+            if (window.Paddle) {
+              window.Paddle.Initialize({
+                token: config.clientToken,
+                environment: config.environment || 'sandbox',
+              });
+              setPaddleInitialized(true);
+              clearInterval(checkPaddle);
+            }
+          }, 100);
+
+          // Clear interval after 10 seconds if Paddle doesn't load
+          setTimeout(() => clearInterval(checkPaddle), 10000);
+        }
+      } catch (error) {
+        console.warn('Could not fetch Paddle config:', error);
+      }
+    };
+
+    initPaddle();
+  }, []);
+
+  // Load subscription status from Firestore
+  useEffect(() => {
+    if (!db || !user) return;
+
+    const appId = window.__app_id;
+    const subscriptionRef = doc(db, `artifacts/${appId}/users/${user.uid}/metadata/subscription`);
+    
+    const unsubscribe = onSnapshot(
+      subscriptionRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          setSubscription({
+            isPremium: data.isPremium || false,
+            subscriptionId: data.subscriptionId || null,
+            customerId: data.customerId || null,
+            status: data.status || 'none',
+            priceId: data.priceId || null,
+            currentPeriodEnd: data.currentPeriodEnd || null,
+            cancelAtPeriodEnd: data.cancelAtPeriodEnd || false,
+            updatedAt: data.updatedAt || null,
+          });
+        }
+      },
+      (error) => {
+        console.warn('Error loading subscription:', error);
+      }
+    );
+
+    return unsubscribe;
+  }, [db, user]);
+
+  // Handle Paddle checkout
+  const handleUpgrade = () => {
+    if (!paddleInitialized || !paddleConfig?.priceId || !user) {
+      console.error('Paddle not ready or missing config');
+      return;
+    }
+
+    window.Paddle?.Checkout.open({
+      items: [{ priceId: paddleConfig.priceId, quantity: 1 }],
+      customer: { email: user.email || '' },
+      customData: { userId: user.uid },
+      successCallback: async () => {
+        // Update subscription in Firestore after successful checkout
+        if (db && user) {
+          const appId = window.__app_id;
+          const subscriptionRef = doc(db, `artifacts/${appId}/users/${user.uid}/metadata/subscription`);
+          await setDoc(subscriptionRef, {
+            isPremium: true,
+            status: 'active',
+            updatedAt: Date.now(),
+          }, { merge: true });
+        }
+        setShowUpgradeDialog(false);
+      },
+      closeCallback: () => {
+        setShowUpgradeDialog(false);
+      },
+    });
+  };
+
+  // Handle manage subscription (opens Paddle customer portal)
+  const handleManageSubscription = async () => {
+    if (!subscription.customerId) return;
+
+    try {
+      const response = await fetch('/api/subscription/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: subscription.customerId,
+          subscriptionId: subscription.subscriptionId,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.portalUrl) {
+        window.open(data.portalUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+    }
+  };
 
   // Load user data and update streak
   useEffect(() => {

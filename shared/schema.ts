@@ -46,3 +46,43 @@ export const userMetadataSchema = z.object({
 });
 
 export type UserMetadata = z.infer<typeof userMetadataSchema>;
+
+// Subscription schema for premium status tracking
+export const subscriptionSchema = z.object({
+  isPremium: z.boolean().default(false),
+  subscriptionId: z.string().nullable().default(null),
+  customerId: z.string().nullable().default(null),
+  status: z.enum(['active', 'canceled', 'past_due', 'paused', 'trialing', 'none']).default('none'),
+  priceId: z.string().nullable().default(null),
+  currentPeriodEnd: z.number().nullable().default(null),
+  cancelAtPeriodEnd: z.boolean().default(false),
+  updatedAt: z.number().nullable().default(null),
+});
+
+export type Subscription = z.infer<typeof subscriptionSchema>;
+
+// Paddle webhook event types
+export const paddleWebhookEventSchema = z.object({
+  event_type: z.string(),
+  data: z.object({
+    id: z.string(),
+    status: z.string().optional(),
+    customer_id: z.string().optional(),
+    custom_data: z.object({
+      userId: z.string().optional(),
+    }).optional(),
+    items: z.array(z.object({
+      price: z.object({
+        id: z.string(),
+      }).optional(),
+    })).optional(),
+    current_billing_period: z.object({
+      ends_at: z.string().optional(),
+    }).optional(),
+    scheduled_change: z.object({
+      action: z.string().optional(),
+    }).nullable().optional(),
+  }),
+});
+
+export type PaddleWebhookEvent = z.infer<typeof paddleWebhookEventSchema>;
