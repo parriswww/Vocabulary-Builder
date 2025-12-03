@@ -209,8 +209,8 @@ function AdBanner({ isPremium }: { isPremium: boolean }) {
   }
 
   return (
-    <div className="w-full flex justify-center my-4" data-testid="ad-banner">
-      <div className="w-full max-w-md bg-muted/30 rounded-lg overflow-hidden min-h-[100px] flex items-center justify-center">
+    <div className="w-full flex justify-center my-4 relative z-10" data-testid="ad-banner">
+      <div className="w-full max-w-md bg-muted/30 border border-border rounded-lg min-h-[100px] flex items-center justify-center relative">
         {/* AdSense Ad Unit - Replace data-ad-slot with your actual ad slot ID */}
         <ins
           className="adsbygoogle"
@@ -221,7 +221,7 @@ function AdBanner({ isPremium }: { isPremium: boolean }) {
           data-full-width-responsive="true"
         />
         {/* Fallback text when ads don't load */}
-        <span className="text-muted-foreground text-sm absolute pointer-events-none">
+        <span className="text-muted-foreground text-sm absolute inset-0 flex items-center justify-center pointer-events-none">
           Advertisement
         </span>
       </div>
