@@ -475,10 +475,14 @@ function App() {
           // Initialize Paddle.js when it's loaded
           const checkPaddle = setInterval(() => {
             if (window.Paddle) {
-              window.Paddle.Initialize({
+              const initOptions: { token: string; environment?: 'sandbox' } = {
                 token: config.clientToken,
-                environment: config.environment || 'sandbox',
-              });
+              };
+              // Only set environment for sandbox — production omits this param
+              if (config.environment === 'sandbox') {
+                initOptions.environment = 'sandbox';
+              }
+              window.Paddle.Initialize(initOptions);
               setPaddleInitialized(true);
               clearInterval(checkPaddle);
             }
