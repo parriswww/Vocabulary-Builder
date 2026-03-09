@@ -6,10 +6,38 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 
 ## Recent Changes (March 9, 2026)
 
+**7-Day Free Trial:**
+- New users automatically get a 7-day free trial on first login (no credit card needed)
+- Trial stored in Firestore at `artifacts/{appId}/users/{uid}/metadata/subscription` with `trialStartDate` and `trialEndDate`
+- Users with active trials bypass the paywall and see an amber banner: "Dùng thử miễn phí: còn X ngày"
+- The banner includes an "Đăng ký ngay" (subscribe now) link to start paid subscription
+- Paywall shows "7 ngày dùng thử MIỄN PHÍ" badge and updated CTAs
+
+**Admin Dashboard:**
+- Admin panel accessible at `/admin` path
+- Authentication via `ADMIN_PASSWORD` environment secret (POST `/api/admin/auth`)
+- Admin session tokens stored in-memory with 24-hour TTL
+- Features: subscriber list with stats summary, extend trial by N days, grant 30-day free access
+- In-memory subscriber registry updated by webhooks + user login events
+- Backend endpoints: `GET /api/admin/subscribers`, `POST /api/admin/extend-trial`, `POST /api/admin/grant-free-month`, `POST /api/admin/logout`
+- Admin grants also persisted to Firestore via REST API so they survive server restarts
+- `GET /api/subscription/override/:uid` allows frontend to fetch server-side overrides
+
+**Settings View:**
+- New "Settings" tab in main app navigation
+- Shows: profile info (avatar, name, email, user ID), subscription status/plan badge, trial end date, billing management button, legal links, support email
+- Accessible via `data-testid="button-view-settings"` and `data-testid="view-settings"`
+
+**Refund Policy:**
+- Added detailed refund policy section to Terms of Service (Section 5)
+- 14-day full refund window on first paid month
+- No partial refunds after 14 days; cancellation ends access at period end
+- Refunds processed through Paddle (5–10 business days)
+
 **Paywall Model (replaced ad-supported model):**
 - Removed all Google AdSense ad banners entirely
 - Changed monetization from "free with ads / pay to remove ads" to full site paywall
-- After login, non-premium users see a paywall screen with "Get Full Access" heading
+- After login, non-premium/non-trial users see a paywall screen with "Get Full Access" heading
 - Paywall shows price primarily in VND (130.000 ₫/tháng) with USD ($4.95/month) in small text below
 - All billing charged in USD via Paddle; VND display is for Vietnamese users
 - Premium users (post-payment) get full access to all app features
