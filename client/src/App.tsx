@@ -189,46 +189,6 @@ const Icons = {
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms';
 
-// AdSense Banner Component - shows ads for free users
-function AdBanner({ isPremium }: { isPremium: boolean }) {
-  useEffect(() => {
-    // Only try to load ads for non-premium users
-    if (!isPremium) {
-      try {
-        // Push ad to AdSense
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-      } catch (e) {
-        console.warn('AdSense not available');
-      }
-    }
-  }, [isPremium]);
-
-  // Don't render anything for premium users
-  if (isPremium) {
-    return null;
-  }
-
-  return (
-    <div className="w-full flex justify-center my-4 relative z-10" data-testid="ad-banner">
-      <div className="w-full max-w-md bg-muted/30 border border-border rounded-lg min-h-[100px] flex items-center justify-center relative">
-        {/* AdSense Ad Unit - Replace data-ad-slot with your actual ad slot ID */}
-        <ins
-          className="adsbygoogle"
-          style={{ display: 'block', width: '100%', minHeight: '100px' }}
-          data-ad-client="ca-pub-5351173673483508"
-          data-ad-slot="YOUR_AD_SLOT_ID"
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
-        {/* Fallback text when ads don't load */}
-        <span className="text-muted-foreground text-sm absolute inset-0 flex items-center justify-center pointer-events-none">
-          Advertisement
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // Premium Upgrade Dialog Component
 function UpgradeDialog({ 
   isOpen, 
@@ -355,6 +315,7 @@ function App() {
   const [paddleConfig, setPaddleConfig] = useState<PaddleConfig | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [paddleInitialized, setPaddleInitialized] = useState(false);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
   // Dark mode effect
   useEffect(() => {
@@ -471,6 +432,7 @@ function App() {
 
   // Load subscription status from Firestore
   useEffect(() => {
+    setSubscriptionChecked(false);
     if (!db || !user) return;
 
     const appId = window.__app_id;
@@ -492,9 +454,11 @@ function App() {
             updatedAt: data.updatedAt || null,
           });
         }
+        setSubscriptionChecked(true);
       },
       (error) => {
         console.warn('Error loading subscription:', error);
+        setSubscriptionChecked(true);
       }
     );
 
@@ -838,8 +802,13 @@ function App() {
   const speakWord = (text: string) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utterance);
+      // Small delay needed after cancel() to avoid Chrome bug where speech silently fails
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        window.speechSynthesis.speak(utterance);
+      }, 100);
     }
   };
 
@@ -1254,6 +1223,144 @@ function App() {
     );
   }
 
+  // Show paywall for logged-in users who have not purchased access
+  if (!subscriptionChecked) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Vocabulary Builder</h1>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-muted-foreground text-sm">Checking access...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!subscription.isPremium) {
+    return (
+      <div className="h-screen flex flex-col bg-background overflow-y-auto">
+        <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Vocabulary Builder</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                aria-label="Toggle dark mode"
+              >
+                {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+              </button>
+              <button
+                onClick={handleLogout}
+                data-testid="button-logout-paywall"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                aria-label="Logout"
+              >
+                <Icons.Logout />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-6 text-center text-white mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
+                <Icons.Crown />
+              </div>
+              <h2 className="text-2xl font-bold mb-1">Get Full Access</h2>
+              <p className="text-white/80 text-sm">Build your vocabulary with flashcards, quizzes, spaced repetition and more</p>
+            </div>
+
+            <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
+              <div className="text-center mb-6">
+                <div className="text-5xl font-bold text-foreground">$5</div>
+                <div className="text-muted-foreground mt-1">one-time payment · access forever</div>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {[
+                  'Flashcards with spaced repetition',
+                  'Quizzes to test your knowledge',
+                  'Daily streak tracking',
+                  'Word mastery levels',
+                  'Cross-device sync via cloud',
+                  'Statistics dashboard',
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-foreground">
+                    <div className="flex-shrink-0 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <Icons.Check />
+                    </div>
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={handleUpgrade}
+                disabled={!paddleInitialized}
+                data-testid="button-get-access"
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {paddleInitialized ? 'Get Access for $5' : 'Loading...'}
+              </button>
+
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Secure payment by Paddle. One-time charge, no subscription.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setCurrentView('privacy')} className="hover:text-foreground transition-colors" data-testid="link-privacy-paywall">Privacy Policy</button>
+                  <span>|</span>
+                  <button onClick={() => setCurrentView('terms')} className="hover:text-foreground transition-colors" data-testid="link-terms-paywall">Terms of Service</button>
+                </div>
+                <p className="text-xs text-muted-foreground/70">© {new Date().getFullYear()} ACE-Apps. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Legal pages accessible from paywall */}
+        {(currentView === 'privacy' || currentView === 'terms') && (
+          <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+            <div className="flex flex-col h-full">
+              <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setCurrentView('list')}
+                    className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                    data-testid="button-legal-back-paywall"
+                  >
+                    <Icons.ChevronLeft />
+                  </button>
+                  <h1 className="text-xl font-bold text-white">
+                    {currentView === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+                  </h1>
+                </div>
+              </header>
+              <div className="flex-1 overflow-y-auto p-4">
+                <LegalView type={currentView as 'privacy' | 'terms'} onBack={() => setCurrentView('list')} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Mobile Header */}
@@ -1263,28 +1370,15 @@ function App() {
             📚 Vocabulary Builder
           </h1>
           <div className="flex items-center gap-2">
-            {/* Premium Badge or Upgrade Button */}
-            {subscription.isPremium ? (
-              <button
-                onClick={handleManageSubscription}
-                data-testid="button-premium-badge"
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:from-yellow-500 hover:to-orange-500 transition-colors shadow-md"
-                title="Manage subscription"
-              >
-                <Icons.Crown />
-                <span className="text-xs font-semibold hidden sm:inline">Premium</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowUpgradeDialog(true)}
-                data-testid="button-upgrade"
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white hover:from-yellow-500 hover:to-orange-500 transition-colors shadow-md animate-pulse"
-                title="Upgrade to Premium - Remove Ads"
-              >
-                <Icons.Crown />
-                <span className="text-xs font-semibold hidden sm:inline">Upgrade</span>
-              </button>
-            )}
+            <button
+              onClick={handleManageSubscription}
+              data-testid="button-premium-badge"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white shadow-md"
+              title="Manage subscription"
+            >
+              <Icons.Crown />
+              <span className="text-xs font-semibold hidden sm:inline">Premium</span>
+            </button>
             <button
               onClick={() => setShowHelpDialog(true)}
               data-testid="button-help"
@@ -1603,9 +1697,6 @@ function App() {
 
         {/* Content Area */}
         <div className="px-4 py-6">
-          {/* Top Ad Banner - Shows on all pages for free users */}
-          <AdBanner isPremium={subscription.isPremium} />
-
           {currentView === 'list' && (
             <WordListView
               words={filteredWords}
@@ -1649,33 +1740,6 @@ function App() {
 
           {currentView === 'terms' && (
             <LegalView type="terms" onBack={() => setCurrentView('list')} />
-          )}
-
-          {/* Bottom Ad Banner - Shows on all pages for free users */}
-          <AdBanner isPremium={subscription.isPremium} />
-
-          {/* Upgrade prompt for free users */}
-          {!subscription.isPremium && (
-            <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full text-white">
-                    <Icons.Crown />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Remove Ads for $5</p>
-                    <p className="text-sm text-muted-foreground">One-time payment, ad-free forever</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowUpgradeDialog(true)}
-                  data-testid="button-upgrade-bottom"
-                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg font-medium hover:from-yellow-600 hover:to-orange-600 transition-colors shadow-md"
-                >
-                  Upgrade
-                </button>
-              </div>
-            </div>
           )}
 
           {/* Footer with Legal Links */}
@@ -2430,11 +2494,24 @@ function QuizView({ words }: { words: Word[] }) {
 
   useEffect(() => {
     if (started && words.length >= 4) {
-      // Shuffle and select words for quiz
       const shuffled = [...words].sort(() => Math.random() - 0.5);
       setQuizWords(shuffled.slice(0, Math.min(10, shuffled.length)));
     }
-  }, [started, words]);
+  }, [started]);
+
+  // Generate options with useMemo at the top level - depends on current question
+  const options = useMemo(() => {
+    if (!started || quizWords.length === 0 || currentQuestionIndex >= quizWords.length) {
+      return [];
+    }
+    const currentWord = quizWords[currentQuestionIndex];
+    const correct = [currentWord];
+    const others = words.filter((w) => w.id !== currentWord.id).sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 3 && i < others.length; i++) {
+      correct.push(others[i]);
+    }
+    return correct.sort(() => Math.random() - 0.5);
+  }, [currentQuestionIndex, quizWords, started]);
 
   if (words.length < 4) {
     return (
@@ -2472,7 +2549,7 @@ function QuizView({ words }: { words: Word[] }) {
   }
 
   if (showResult) {
-    const percentage = Math.round((score / quizWords.length) * 100);
+    const percentage = quizWords.length > 0 ? Math.round((score / quizWords.length) * 100) : 0;
     return (
       <div className="text-center py-16 max-w-md mx-auto">
         <div className="mb-6">
@@ -2489,6 +2566,7 @@ function QuizView({ words }: { words: Word[] }) {
               setSelectedAnswer(null);
               setScore(0);
               setShowResult(false);
+              setQuizWords([]);
             }}
             data-testid="button-retry-quiz"
             className="w-full px-8 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover-elevate active-elevate-2"
@@ -2500,34 +2578,29 @@ function QuizView({ words }: { words: Word[] }) {
     );
   }
 
+  // Guard: quizWords may be empty while useEffect runs
+  if (quizWords.length === 0 || options.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="text-muted-foreground text-sm">Loading quiz...</div>
+      </div>
+    );
+  }
+
   const currentWord = quizWords[currentQuestionIndex];
   const currentDefinition = currentWord.definitions[0];
 
-  // Generate answer options
-  const generateOptions = () => {
-    const options = [currentWord];
-    const otherWords = words.filter((w) => w.id !== currentWord.id);
-    const shuffledOthers = otherWords.sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < 3 && i < shuffledOthers.length; i++) {
-      options.push(shuffledOthers[i]);
-    }
-
-    return options.sort(() => Math.random() - 0.5);
-  };
-
-  const [options] = useState(generateOptions());
-
   const handleAnswer = (word: Word) => {
+    if (selectedAnswer !== null) return;
     setSelectedAnswer(word.word);
 
     if (word.id === currentWord.id) {
-      setScore(score + 1);
+      setScore((s) => s + 1);
     }
 
     setTimeout(() => {
       if (currentQuestionIndex + 1 < quizWords.length) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setCurrentQuestionIndex((i) => i + 1);
         setSelectedAnswer(null);
       } else {
         setShowResult(true);
@@ -2559,8 +2632,8 @@ function QuizView({ words }: { words: Word[] }) {
 
           return (
             <button
-              key={idx}
-              onClick={() => !selectedAnswer && handleAnswer(option)}
+              key={option.id}
+              onClick={() => handleAnswer(option)}
               data-testid={`button-answer-${idx}`}
               disabled={selectedAnswer !== null}
               className={`min-h-16 p-4 rounded-lg text-base font-medium transition-all ${

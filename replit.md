@@ -4,24 +4,34 @@
 
 A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. Designed to feel like a native mobile app with vertical navigation, vibrant gradient UI, and no browser chrome. Features include flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, statistics dashboard, and integration with the Datamuse API.
 
-## Recent Changes (December 3, 2025)
+## Recent Changes (March 9, 2026)
+
+**Paywall Model (replaced ad-supported model):**
+- Removed all Google AdSense ad banners entirely
+- Changed monetization from "free with ads / pay to remove ads" to full site paywall
+- After login, non-premium users see a paywall screen with "Get Full Access" heading
+- Paywall shows features list, $5 one-time price, and "Get Access for $5" Paddle button
+- Premium users (post-payment) get full access to all app features
+- Legal links (Privacy Policy, Terms of Service) accessible from paywall
+- `subscriptionChecked` state prevents flash of paywall for existing premium users
+
+**Bug Fixes:**
+- Fixed quiz: `options` were generated once via `useState` after conditional returns (React rules violation); replaced with `useMemo` at top of component so options refresh per question
+- Fixed audio playback: Chrome bug where `speechSynthesis.cancel()` immediately before `speak()` causes silent failure; fixed with 100ms `setTimeout` delay
+
+**Previous Changes (December 3, 2025):**
 
 **Privacy Policy & Terms of Service:**
 - Added Privacy Policy and Terms of Service pages
 - Legal links appear in footer on login page (GDPR/CCPA compliant placement)
 - Legal links also appear in footer of main app content
-- Full Privacy Policy covers data collection, third-party services (AdSense, Paddle, Firebase)
+- Full Privacy Policy covers data collection, third-party services (Paddle, Firebase)
 - Terms of Service covers user accounts, payments, acceptable use
 - Contact email: ace.apps.44@gmail.com
 - Legal content stored in `client/src/legal/privacy-policy.ts`
 
-**Monetization with Paddle & AdSense:**
-- Integrated Google AdSense for displaying ads to free users
-- Ad banners appear at top and bottom of all pages/tabs
-- Paddle payment integration for $5 ad-free premium subscription
-- Premium upgrade button in header (shows crown icon)
-- Upgrade dialog with clear pricing and benefits
-- Premium users see "Premium" badge instead of upgrade button
+**Paddle Payments:**
+- Paddle payment integration for $5 one-time site access
 - Subscription status stored in Firestore at `users/{userId}/metadata/subscription`
 - Paddle webhook handler at `/api/webhooks/paddle` for subscription events
 - Customer portal integration for subscription management
