@@ -1,6 +1,6 @@
 export const privacyPolicyContent = `
 # Privacy Policy for Vocabulary Builder
-**Last Updated: December 3, 2025**
+**Last Updated: March 9, 2026**
 
 ACE-Apps ("we," "our," or "us") operates the Vocabulary Builder website (the "Site"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Site.
 
@@ -9,49 +9,46 @@ By using the Site, you agree to the collection and use of information in accorda
 ## 1. Information We Collect
 
 ### A. Personal Data You Provide
-We collect information that you voluntarily provide to us when you register an account, purchase the ad-free version, or contact us for support:
+We collect information that you voluntarily provide to us when you register an account, subscribe to the service, or contact us for support:
 
 - **Name**
 - **Email Address**
 - **Account Credentials:** Username and encrypted password.
-- **Payment Information:** Transactions are processed through our Merchant of Record, Paddle.com. We do not store your credit card details on our servers; however, we receive data confirming your purchase status (e.g., "Paid" or "Unpaid") to enable the ad-free features.
+- **Payment Information:** Transactions are processed through our Merchant of Record, Paddle.com. We do not store your credit card details on our servers; however, we receive data confirming your subscription status to enable access to the service.
 
 ### B. Automatically Collected Data
-When you access the Site, our servers and third-party partners automatically collect certain data via cookies and similar technologies, including:
+When you access the Site, our servers and third-party partners automatically collect certain data, including:
 
 - **Device Information:** Browser type, operating system, and screen resolution.
 - **Log Data:** IP address, pages visited, time spent on the Site, and referring URLs.
-- **Location Data:** We collect approximate location data based on your IP address to serve relevant content and geographically compliant advertisements. We do not collect precise GPS coordinates.
 
 ### C. Cookies and Tracking Technologies
-We use cookies to enhance your experience. You can instruct your browser to refuse all cookies, but some portions of the Site (such as staying logged in) may not function properly without them.
+We use cookies to enhance your experience (e.g., keeping you logged in). You can instruct your browser to refuse all cookies, but some portions of the Site may not function properly without them.
 
 ## 2. How We Use Your Information
 
 We use the collected data to:
 
 - Create and manage your user account.
-- Process one-time payments for the ad-free version (via Paddle).
+- Process monthly subscription payments via Paddle.
 - Improve website performance and fix technical issues.
-- Display personalized advertisements (via Google AdSense).
 - Analyze user trends to improve our educational content.
 
 ## 3. Third-Party Services & Data Sharing
 
 We do not sell your personal data to data brokers. However, we share data with the following trusted third-party service providers to operate the Site:
 
-### A. Google AdSense (Advertising)
-We use Google AdSense to display advertisements on the free version of the Site.
+### A. Paddle (Payment Processing)
+We use Paddle.com as our Merchant of Record for subscription billing.
 
-- **Cookies:** AdSense uses cookies to serve ads based on your prior visits to our website or other websites.
-- **Google's Use of Data:** Google's use of advertising cookies enables it and its partners to serve ads to you based on your visit to our Site and/or other sites on the Internet.
-- **Opt-Out:** You can opt out of personalized advertising by visiting [Google Ads Settings](https://adssettings.google.com/).
-
-### B. Paddle (Payment Processing)
-We use Paddle.com as our Merchant of Record for the "Ad-Free" upgrade.
-
-- **Data Sharing:** When you make a purchase, you are directed to Paddle to complete the transaction. Paddle processes your financial data securely.
+- **Data Sharing:** When you subscribe, you are directed to Paddle to complete the transaction. Paddle processes your financial data securely.
 - **Privacy Policy:** [Paddle Privacy Policy](https://www.paddle.com/legal/privacy)
+
+### B. Firebase (Google)
+We use Firebase for user authentication and cloud data storage.
+
+- **Function:** Stores your vocabulary words, progress data, and account information securely.
+- **Privacy Policy:** [Google Privacy Policy](https://policies.google.com/privacy)
 
 ### C. Google Analytics
 We use Google Analytics to analyze website traffic and usage patterns.
@@ -70,20 +67,19 @@ You may request the complete deletion of your account and associated data at any
 
 ## 5. International Data Transfers
 
-Our servers and third-party service providers (Google, Paddle) may be located in countries outside of your country of residence (e.g., the United States, Singapore, UK). By using the Site, you acknowledge that your data may be transferred to and processed in these countries. We ensure appropriate safeguards are in place for such transfers.
+Our servers and third-party service providers (Google/Firebase, Paddle) may be located in countries outside of your country of residence (e.g., the United States, Singapore, UK). By using the Site, you acknowledge that your data may be transferred to and processed in these countries. We ensure appropriate safeguards are in place for such transfers.
 
 ## 6. Specific Regional Disclosures
 
 ### A. United States (CCPA/CPRA)
 
 - **Do Not Sell My Personal Information:** We do not sell personal information for monetary value.
-- **Data Sharing:** We share identifiers (like IP addresses and Cookies) with ad networks (Google AdSense) for advertising purposes, which may be defined as "sharing" under California law. You may opt out by adjusting your browser's cookie settings.
 
 ### B. European Union (GDPR)
 If you are in the EEA or UK, you have the right to access, correct, or erase your personal data.
 
-- **Legal Basis:** We process your data based on Consent (for ads/cookies) and Contractual Necessity (to provide the website service and account features).
-- **Withdrawal:** You may withdraw consent for tracking at any time by clearing your browser cookies or contacting us.
+- **Legal Basis:** We process your data based on Contractual Necessity (to provide the website service and account features).
+- **Withdrawal:** You may withdraw consent at any time by contacting us.
 
 ### C. Vietnam (Decree 13/2023/ND-CP)
 In compliance with Vietnam's Personal Data Protection Decree:
@@ -106,7 +102,7 @@ If you have questions about this Privacy Policy, please contact us at:
 
 export const termsOfServiceContent = `
 # Terms of Service for Vocabulary Builder
-**Last Updated: December 3, 2025**
+**Last Updated: March 9, 2026**
 
 Welcome to Vocabulary Builder, operated by ACE-Apps ("we," "our," or "us"). By accessing or using our website and services (the "Site"), you agree to be bound by these Terms of Service.
 
@@ -116,10 +112,9 @@ By using Vocabulary Builder, you agree to these Terms. If you do not agree, plea
 
 ## 2. Description of Service
 
-Vocabulary Builder is an educational web application that helps users learn and memorize vocabulary through flashcards, quizzes, and spaced repetition techniques. The service includes:
+Vocabulary Builder is an educational web application that helps users learn and memorize vocabulary through flashcards, quizzes, and spaced repetition techniques. Access to the full service requires an active monthly subscription.
 
-- **Free Version:** Full access to all learning features with advertisements displayed.
-- **Premium Version:** Ad-free experience available for a one-time payment of $5.
+- **Subscription:** Full access to all learning features for 130.000 ₫/tháng ($4.95 USD/month), billed monthly via Paddle.
 
 ## 3. User Accounts
 
@@ -130,8 +125,10 @@ Vocabulary Builder is an educational web application that helps users learn and 
 
 ## 4. Payments and Refunds
 
-- Premium subscriptions are processed through Paddle.com, our Merchant of Record.
-- The $5 premium upgrade is a one-time payment for lifetime ad-free access.
+- Subscriptions are processed through Paddle.com, our Merchant of Record.
+- The subscription fee is 130.000 ₫/tháng ($4.95 USD/month), billed monthly.
+- All payments are charged in USD regardless of the displayed VND price. The VND price is an approximate equivalent and may vary with exchange rates.
+- You may cancel your subscription at any time. Access continues until the end of the current billing period.
 - Refund requests should be directed to Paddle in accordance with their refund policy.
 - We do not store your payment card details.
 
@@ -161,7 +158,6 @@ You agree not to:
 
 The Site uses third-party services including:
 
-- **Google AdSense** for advertising (free version)
 - **Paddle.com** for payment processing
 - **Firebase** for data storage and authentication
 

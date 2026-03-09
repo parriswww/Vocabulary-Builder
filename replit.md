@@ -10,7 +10,8 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 - Removed all Google AdSense ad banners entirely
 - Changed monetization from "free with ads / pay to remove ads" to full site paywall
 - After login, non-premium users see a paywall screen with "Get Full Access" heading
-- Paywall shows features list, $5 one-time price, and "Get Access for $5" Paddle button
+- Paywall shows price primarily in VND (130.000 ₫/tháng) with USD ($4.95/month) in small text below
+- All billing charged in USD via Paddle; VND display is for Vietnamese users
 - Premium users (post-payment) get full access to all app features
 - Legal links (Privacy Policy, Terms of Service) accessible from paywall
 - `subscriptionChecked` state prevents flash of paywall for existing premium users

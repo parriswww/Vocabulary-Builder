@@ -226,8 +226,9 @@ function UpgradeDialog({
         {/* Content */}
         <div className="p-6">
           <div className="text-center mb-6">
-            <div className="text-4xl font-bold text-foreground">$5</div>
-            <div className="text-muted-foreground">one-time payment</div>
+            <div className="text-4xl font-bold text-foreground">130.000 ₫</div>
+            <div className="text-muted-foreground text-sm">mỗi tháng</div>
+            <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
           </div>
 
           <ul className="space-y-3 mb-6">
@@ -1284,8 +1285,9 @@ function App() {
 
             <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
               <div className="text-center mb-6">
-                <div className="text-5xl font-bold text-foreground">$5</div>
-                <div className="text-muted-foreground mt-1">one-time payment · access forever</div>
+                <div className="text-5xl font-bold text-foreground">130.000 ₫</div>
+                <div className="text-muted-foreground mt-1 text-sm">mỗi tháng</div>
+                <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
               </div>
 
               <ul className="space-y-3 mb-6">
@@ -1312,11 +1314,11 @@ function App() {
                 data-testid="button-get-access"
                 className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {paddleInitialized ? 'Get Access for $5' : 'Loading...'}
+                {paddleInitialized ? 'Đăng ký · $4.95 USD/tháng' : 'Loading...'}
               </button>
 
               <p className="text-xs text-muted-foreground text-center mt-3">
-                Secure payment by Paddle. One-time charge, no subscription.
+                Thanh toán an toàn qua Paddle. Hủy bất cứ lúc nào.
               </p>
             </div>
 
