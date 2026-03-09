@@ -1669,9 +1669,8 @@ function App() {
               : lang.trialBannerAdmin}
           </span>
           <button
-            onClick={handleUpgrade}
-            disabled={!paddleInitialized}
-            className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline underline-offset-2 disabled:opacity-50 whitespace-nowrap"
+            onClick={() => setShowUpgradeDialog(true)}
+            className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline underline-offset-2 whitespace-nowrap"
             data-testid="button-upgrade-banner"
           >
             {lang.subscribeNow}
