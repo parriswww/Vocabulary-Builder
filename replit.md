@@ -6,6 +6,23 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 
 ## Recent Changes (March 9, 2026)
 
+**Landing Page + Login Page Combined:**
+- Login page redesigned into a scrollable landing page with four sections:
+  1. **Sticky orange header** with "Log In" button and dark mode toggle
+  2. **Hero section** — headline, subheadline, "Start Free Trial" and "Log In" CTA buttons
+  3. **Features section** — 2-column grid of 6 feature cards (Spaced Repetition, Flashcards, Quizzes, Daily Streaks, Statistics, Cloud Sync)
+  4. **Pricing section** (`id="pricing"`) — shows 130.000 ₫/month ($4.95 USD) with 7-day free trial badge, feature list, CTA; use `https://yourapp.replit.app/#pricing` as Paddle product URL
+  5. **Auth form** (`id="auth-form"`) — existing login/signup/reset card with Google sign-in, preserved intact
+  6. **Footer** — Privacy Policy, Terms of Service, Refund Policy links + copyright
+- CTA buttons in hero and pricing scroll to the auth form and set appropriate mode (signup/login)
+- Container changed from `h-screen` to `min-h-screen overflow-y-auto`
+
+**Refund Policy:**
+- New `refundPolicyContent` export added to `client/src/legal/privacy-policy.ts`
+- "Refund Policy" link added to the footer next to Privacy Policy and Terms of Service
+- Clicking it opens a standalone refund policy view (handled via `authMode === 'refund'` in the legal renderer)
+- Content covers: 7-day trial, 14-day full refund window, cancellation terms, processing via Paddle
+
 **Google Sign-In:**
 - Added "Continue with Google" button to auth form (login and signup modes)
 - Uses Firebase `signInWithPopup` with `GoogleAuthProvider`

@@ -207,3 +207,48 @@ If you have questions about these Terms of Service, please contact us at:
 - **Email:** ace.apps.44@gmail.com
 - **Developer:** ACE-Apps
 `;
+
+export const refundPolicyContent = `
+# Refund Policy
+**Last Updated: March 9, 2026**
+
+This Refund Policy applies to subscriptions purchased through Vocabulary Builder, operated by ACE-Apps. Payments are processed by Paddle.com, our Merchant of Record.
+
+## 1. Free Trial
+
+- New users receive a **7-day free trial** with full access to all features.
+- No credit card is required to start the trial.
+- You will only be charged if you choose to subscribe after the trial ends.
+
+## 2. Full Refund Within 14 Days
+
+If you are not satisfied with the service, you may request a **full refund within the first 14 days** of your first paid subscription period.
+
+To request a refund, contact us at:
+- **Email:** ace.apps.44@gmail.com
+- **Subject line:** "Refund Request"
+
+Please include the email address associated with your account and a brief description of the issue.
+
+## 3. After 14 Days
+
+After the 14-day refund window has passed, no refunds are issued for the current billing period. You may cancel your subscription at any time to prevent future charges.
+
+## 4. Cancellation
+
+- You may cancel at any time through your account settings or by contacting us.
+- Upon cancellation, access continues until the end of the current billing period.
+- No partial refunds are issued for unused days after the first 14 days.
+
+## 5. Refund Processing
+
+- Refunds are processed through Paddle and may take **5–10 business days** to appear in your account.
+- This policy is in compliance with Paddle's Merchant of Record refund guidelines.
+
+## 6. Contact Us
+
+Questions about refunds? Contact us at:
+
+- **Email:** ace.apps.44@gmail.com
+- **Developer:** ACE-Apps
+`;

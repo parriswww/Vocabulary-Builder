@@ -30,7 +30,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { Word, InsertWord, UserMetadata, Subscription } from '@shared/schema';
-import { privacyPolicyContent, termsOfServiceContent } from './legal/privacy-policy';
+import { privacyPolicyContent, termsOfServiceContent, refundPolicyContent } from './legal/privacy-policy';
 
 // Paddle types
 declare global {
@@ -996,10 +996,10 @@ function App() {
   // Show login/signup screen if not authenticated
   if (!user) {
     // Show legal pages on auth screen
-    if (authMode === 'privacy' as any || authMode === 'terms' as any) {
-      const legalType = authMode as unknown as 'privacy' | 'terms';
-      const content = legalType === 'privacy' ? privacyPolicyContent : termsOfServiceContent;
-      const title = legalType === 'privacy' ? 'Privacy Policy' : 'Terms of Service';
+    if (authMode === 'privacy' as any || authMode === 'terms' as any || authMode === 'refund' as any) {
+      const legalType = authMode as unknown as 'privacy' | 'terms' | 'refund';
+      const content = legalType === 'privacy' ? privacyPolicyContent : legalType === 'refund' ? refundPolicyContent : termsOfServiceContent;
+      const title = legalType === 'privacy' ? 'Privacy Policy' : legalType === 'refund' ? 'Refund Policy' : 'Terms of Service';
       
       return (
         <div className="h-screen flex flex-col bg-background">
@@ -1114,15 +1114,30 @@ function App() {
       );
     }
 
+    const scrollToAuth = (mode: 'login' | 'signup') => {
+      setAuthMode(mode);
+      setAuthError('');
+      setAuthSuccess('');
+      setTimeout(() => {
+        document.getElementById('auth-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    };
+
     return (
-      <div className="h-screen flex flex-col bg-background">
-        {/* Header */}
-        <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">
-              Vocabulary Builder
-            </h1>
+      <div className="min-h-screen flex flex-col bg-background overflow-y-auto">
+
+        {/* Sticky Header */}
+        <header className="sticky top-0 z-50 flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 shadow-lg">
+          <div className="flex items-center justify-between max-w-lg mx-auto">
+            <h1 className="text-xl font-bold text-white tracking-tight">Vocabulary Builder</h1>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => scrollToAuth('login')}
+                data-testid="button-header-login"
+                className="px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
+              >
+                Log In
+              </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 data-testid="button-dark-mode-auth"
@@ -1135,21 +1150,169 @@ function App() {
           </div>
         </header>
 
-        {/* Auth Form */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-md">
-            <div className="bg-card border border-card-border rounded-lg p-6 shadow-xl">
+        {/* Hero Section */}
+        <section className="bg-gradient-to-b from-orange-500 to-orange-400 px-4 pt-10 pb-14 text-center">
+          <div className="max-w-lg mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-5">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              7-Day Free Trial — No Credit Card Needed
+            </div>
+            <h2 className="text-3xl font-extrabold text-white mb-3 leading-tight">
+              Build Your Vocabulary<br />Smarter, Faster
+            </h2>
+            <p className="text-white/85 text-base mb-8 leading-relaxed">
+              Science-backed spaced repetition, flashcards, and quizzes — all synced across your devices so you never lose progress.
+            </p>
+            <div className="flex flex-col gap-3 items-center">
+              <button
+                onClick={() => scrollToAuth('signup')}
+                data-testid="button-hero-start-trial"
+                className="w-full max-w-xs bg-white text-orange-600 font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all text-base"
+              >
+                Start Free Trial
+              </button>
+              <button
+                onClick={() => scrollToAuth('login')}
+                data-testid="button-hero-login"
+                className="w-full max-w-xs bg-white/20 backdrop-blur-sm text-white font-medium py-2.5 rounded-xl border border-white/30 hover:bg-white/30 transition-all text-sm"
+              >
+                Already have an account? Log In
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="px-4 py-12 bg-background">
+          <div className="max-w-lg mx-auto">
+            <h3 className="text-xl font-bold text-foreground text-center mb-2">Everything you need to learn words</h3>
+            <p className="text-muted-foreground text-center text-sm mb-8">Six powerful tools working together to build lasting vocabulary</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  ),
+                  title: 'Spaced Repetition',
+                  desc: 'SM-2 algorithm shows words right when you need to review them',
+                },
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                  ),
+                  title: 'Flashcards',
+                  desc: 'Flip through cards with audio pronunciation and examples',
+                },
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ),
+                  title: 'Quizzes',
+                  desc: 'Multiple-choice tests that adapt to your mastery level',
+                },
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2Z"/>
+                    </svg>
+                  ),
+                  title: 'Daily Streaks',
+                  desc: 'Stay motivated with streak tracking and daily practice goals',
+                },
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  ),
+                  title: 'Statistics',
+                  desc: 'Track your progress with detailed learning analytics',
+                },
+                {
+                  icon: (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                    </svg>
+                  ),
+                  title: 'Cloud Sync',
+                  desc: 'Your words available on every device, always up to date',
+                },
+              ].map((feature) => (
+                <div key={feature.title} className="bg-card border border-card-border rounded-lg p-4">
+                  <div className="text-orange-500 mb-2">{feature.icon}</div>
+                  <h4 className="font-semibold text-foreground text-sm mb-1">{feature.title}</h4>
+                  <p className="text-muted-foreground text-xs leading-relaxed">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section id="pricing" className="px-4 py-12 bg-muted/40">
+          <div className="max-w-lg mx-auto">
+            <h3 className="text-xl font-bold text-foreground text-center mb-2">Simple, transparent pricing</h3>
+            <p className="text-muted-foreground text-center text-sm mb-8">Start free, upgrade when you're ready</p>
+            <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">
+              <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+                <div>
+                  <div className="text-2xl font-extrabold text-foreground">130.000 ₫<span className="text-base font-normal text-muted-foreground">/month</span></div>
+                  <div className="text-xs text-muted-foreground mt-0.5">$4.95 USD/month · billed monthly</div>
+                </div>
+                <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-500/20">
+                  7-day FREE trial
+                </span>
+              </div>
+              <ul className="space-y-2.5 mb-6">
+                {[
+                  'Unlimited word entries',
+                  'Flashcards with audio pronunciation',
+                  'Adaptive quizzes & spaced repetition',
+                  'Daily streak tracking',
+                  'Statistics & progress dashboard',
+                  'Cloud sync across all devices',
+                  'Cancel anytime',
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm text-foreground">
+                    <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => scrollToAuth('signup')}
+                data-testid="button-pricing-start-trial"
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-3 rounded-lg shadow-md hover:from-orange-600 hover:to-orange-700 transition-all"
+              >
+                Start 7-Day Free Trial
+              </button>
+              <p className="mt-3 text-center text-xs text-muted-foreground">No credit card required to start. Cancel anytime.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Auth Form Section */}
+        <section className="px-4 py-12 bg-background">
+          <div className="max-w-md mx-auto">
+            <div id="auth-form" className="bg-card border border-card-border rounded-lg p-6 shadow-xl">
               <div className="text-center mb-6">
-                <div className="text-4xl mb-2">📚</div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">
+                <h2 className="text-2xl font-bold text-foreground mb-1">
                   {authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Reset Password'}
                 </h2>
-                <p className="text-muted-foreground">
-                  {authMode === 'login' 
-                    ? 'Log in to access your vocabulary' 
+                <p className="text-muted-foreground text-sm">
+                  {authMode === 'login'
+                    ? 'Log in to access your vocabulary'
                     : authMode === 'signup'
-                    ? 'Start building your vocabulary today'
-                    : 'Enter your email to receive a password reset link'}
+                    ? 'Start your 7-day free trial today'
+                    : 'Enter your email to receive a reset link'}
                 </p>
               </div>
 
@@ -1334,37 +1497,46 @@ function App() {
               </div>
             </div>
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Your account will sync across all your devices
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Your account syncs across all your devices
             </p>
-
-            {/* Legal Links Footer */}
-            <div className="mt-6 pt-4 border-t border-border">
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setAuthMode('privacy' as any)}
-                    className="hover:text-foreground transition-colors"
-                    data-testid="link-privacy-policy-auth"
-                  >
-                    Privacy Policy
-                  </button>
-                  <span className="text-muted">|</span>
-                  <button
-                    onClick={() => setAuthMode('terms' as any)}
-                    className="hover:text-foreground transition-colors"
-                    data-testid="link-terms-of-service-auth"
-                  >
-                    Terms of Service
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground/70">
-                  © {new Date().getFullYear()} ACE-Apps. All rights reserved.
-                </p>
-              </div>
-            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="px-4 py-8 border-t border-border bg-background">
+          <div className="max-w-md mx-auto flex flex-col items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <button
+                onClick={() => setAuthMode('privacy' as any)}
+                className="hover:text-foreground transition-colors"
+                data-testid="link-privacy-policy-auth"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-border select-none">|</span>
+              <button
+                onClick={() => setAuthMode('terms' as any)}
+                className="hover:text-foreground transition-colors"
+                data-testid="link-terms-of-service-auth"
+              >
+                Terms of Service
+              </button>
+              <span className="text-border select-none">|</span>
+              <button
+                onClick={() => setAuthMode('refund' as any)}
+                className="hover:text-foreground transition-colors"
+                data-testid="link-refund-policy-auth"
+              >
+                Refund Policy
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground/70">
+              © {new Date().getFullYear()} ACE-Apps. All rights reserved.
+            </p>
+          </div>
+        </footer>
+
       </div>
     );
   }
