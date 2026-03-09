@@ -114,7 +114,8 @@ By using Vocabulary Builder, you agree to these Terms. If you do not agree, plea
 
 Vocabulary Builder is an educational web application that helps users learn and memorize vocabulary through flashcards, quizzes, and spaced repetition techniques. Access to the full service requires an active monthly subscription.
 
-- **Subscription:** Full access to all learning features for 130.000 ₫/tháng ($4.95 USD/month), billed monthly via Paddle.
+- **Free Trial:** New accounts receive a 7-day free trial with full access to all features. No payment is required during the trial period.
+- **Subscription:** Full access to all learning features for 130.000 ₫/tháng ($4.95 USD/month), billed monthly via Paddle after the trial ends.
 
 ## 3. User Accounts
 
@@ -123,22 +124,38 @@ Vocabulary Builder is an educational web application that helps users learn and 
 - You are responsible for all activities that occur under your account.
 - We reserve the right to suspend or terminate accounts that violate these Terms.
 
-## 4. Payments and Refunds
+## 4. Free Trial
 
+- New accounts automatically receive a 7-day free trial with full access to all features.
+- No credit card is required to start the free trial.
+- At the end of the trial period, a paid subscription is required to continue using the service.
+- We reserve the right to extend or modify trial periods at our discretion.
+
+## 5. Payments, Cancellation, and Refund Policy
+
+### Payment
 - Subscriptions are processed through Paddle.com, our Merchant of Record.
 - The subscription fee is 130.000 ₫/tháng ($4.95 USD/month), billed monthly.
 - All payments are charged in USD regardless of the displayed VND price. The VND price is an approximate equivalent and may vary with exchange rates.
-- You may cancel your subscription at any time. Access continues until the end of the current billing period.
-- Refund requests should be directed to Paddle in accordance with their refund policy.
 - We do not store your payment card details.
 
-## 5. User Content
+### Cancellation
+- You may cancel your subscription at any time through your account settings or by contacting us at ace.apps.44@gmail.com.
+- Upon cancellation, your access to the service will continue until the end of the current 30-day billing period. No partial refunds are issued for unused days after the first 14 days.
+
+### Refund Policy
+- **Full Refund Within 14 Days:** If you are not satisfied with the service, you may request a full refund within the first 14 days of your first paid subscription period. To request a refund, contact us at ace.apps.44@gmail.com with the subject line "Refund Request."
+- **After 14 Days:** After the 14-day refund window, no refunds are issued. You may cancel at any time to prevent future charges.
+- **Refund Processing:** Refunds are processed through Paddle and may take 5–10 business days to appear in your account.
+- This refund policy is in compliance with Paddle's Merchant of Record refund guidelines.
+
+## 6. User Content
 
 - You retain ownership of any vocabulary words, definitions, and sentences you add to the Site.
 - By using the Site, you grant us a license to store and display your content for the purpose of providing the service.
 - You agree not to upload content that is illegal, harmful, or violates the rights of others.
 
-## 6. Acceptable Use
+## 7. Acceptable Use
 
 You agree not to:
 
@@ -148,13 +165,13 @@ You agree not to:
 - Use automated systems (bots, scrapers) to access the Site without permission.
 - Violate any applicable laws or regulations.
 
-## 7. Intellectual Property
+## 8. Intellectual Property
 
 - The Site's design, code, and branding are owned by ACE-Apps.
 - You may not copy, modify, or distribute our intellectual property without permission.
 - The vocabulary content you create belongs to you.
 
-## 8. Third-Party Services
+## 9. Third-Party Services
 
 The Site uses third-party services including:
 
@@ -163,7 +180,7 @@ The Site uses third-party services including:
 
 Your use of these services is subject to their respective terms and privacy policies.
 
-## 9. Disclaimer of Warranties
+## 10. Disclaimer of Warranties
 
 The Site is provided "as is" without warranties of any kind. We do not guarantee that:
 
@@ -171,19 +188,19 @@ The Site is provided "as is" without warranties of any kind. We do not guarantee
 - The Site will be free of errors or bugs.
 - The educational content will meet your specific learning goals.
 
-## 10. Limitation of Liability
+## 11. Limitation of Liability
 
 To the maximum extent permitted by law, ACE-Apps shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Site.
 
-## 11. Changes to Terms
+## 12. Changes to Terms
 
 We may update these Terms from time to time. We will notify users of significant changes by posting a notice on the Site. Continued use of the Site after changes constitutes acceptance of the new Terms.
 
-## 12. Governing Law
+## 13. Governing Law
 
 These Terms are governed by the laws of the jurisdiction where ACE-Apps operates, without regard to conflict of law principles.
 
-## 13. Contact Us
+## 14. Contact Us
 
 If you have questions about these Terms of Service, please contact us at:
 

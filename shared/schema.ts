@@ -57,9 +57,33 @@ export const subscriptionSchema = z.object({
   currentPeriodEnd: z.number().nullable().default(null),
   cancelAtPeriodEnd: z.boolean().default(false),
   updatedAt: z.number().nullable().default(null),
+  // Trial period fields
+  trialStartDate: z.number().nullable().default(null),
+  trialEndDate: z.number().nullable().default(null),
+  // Admin override fields
+  adminGrantedFreeUntil: z.number().nullable().default(null),
 });
 
 export type Subscription = z.infer<typeof subscriptionSchema>;
+
+// Subscriber record for admin panel
+export const subscriberRecordSchema = z.object({
+  uid: z.string(),
+  email: z.string().nullable().default(null),
+  displayName: z.string().nullable().default(null),
+  status: z.string().default('none'),
+  isPremium: z.boolean().default(false),
+  trialStartDate: z.number().nullable().default(null),
+  trialEndDate: z.number().nullable().default(null),
+  adminGrantedFreeUntil: z.number().nullable().default(null),
+  subscriptionId: z.string().nullable().default(null),
+  customerId: z.string().nullable().default(null),
+  currentPeriodEnd: z.number().nullable().default(null),
+  cancelAtPeriodEnd: z.boolean().default(false),
+  updatedAt: z.number().default(0),
+});
+
+export type SubscriberRecord = z.infer<typeof subscriberRecordSchema>;
 
 // Paddle webhook event types
 export const paddleWebhookEventSchema = z.object({

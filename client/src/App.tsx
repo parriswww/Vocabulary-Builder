@@ -185,9 +185,20 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  Settings: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  ExternalLink: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+  ),
 };
 
-type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms';
+type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms' | 'settings';
 
 // Premium Upgrade Dialog Component
 function UpgradeDialog({ 
@@ -312,6 +323,9 @@ function App() {
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
     updatedAt: null,
+    trialStartDate: null,
+    trialEndDate: null,
+    adminGrantedFreeUntil: null,
   });
   const [paddleConfig, setPaddleConfig] = useState<PaddleConfig | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -431,19 +445,70 @@ function App() {
     initPaddle();
   }, []);
 
-  // Load subscription status from Firestore
+  // Load subscription status from Firestore + trial initialization
   useEffect(() => {
     setSubscriptionChecked(false);
     if (!db || !user) return;
 
     const appId = window.__app_id;
     const subscriptionRef = doc(db, `artifacts/${appId}/users/${user.uid}/metadata/subscription`);
-    
+
+    const initTrial = async () => {
+      // First-time user: create a 7-day trial
+      try {
+        const now = Date.now();
+        const trialStartDate = now;
+        const trialEndDate = now + 7 * 24 * 60 * 60 * 1000;
+        await setDoc(subscriptionRef, {
+          isPremium: false,
+          status: 'trialing',
+          trialStartDate,
+          trialEndDate,
+          updatedAt: now,
+          subscriptionId: null,
+          customerId: null,
+          priceId: null,
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          adminGrantedFreeUntil: null,
+        });
+        // Register with backend
+        try {
+          await fetch('/api/admin/register-subscriber', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              status: 'trialing',
+              trialStartDate,
+              trialEndDate,
+              isPremium: false,
+            }),
+          });
+        } catch (e) {
+          console.warn('Failed to register trial with backend:', e);
+        }
+      } catch (err) {
+        console.warn('Failed to initialize trial:', err);
+      }
+    };
+
     const unsubscribe = onSnapshot(
       subscriptionRef,
-      (snapshot) => {
+      async (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
+          // Fetch admin overrides from server
+          let adminOverride: { trialEndDate?: number | null; adminGrantedFreeUntil?: number | null } = {};
+          try {
+            const overrideRes = await fetch(`/api/subscription/override/${user.uid}`);
+            const overrideData = await overrideRes.json();
+            if (overrideData.override) adminOverride = overrideData.override;
+          } catch (e) {
+            // ignore - server may not have this user yet
+          }
           setSubscription({
             isPremium: data.isPremium || false,
             subscriptionId: data.subscriptionId || null,
@@ -453,7 +518,32 @@ function App() {
             currentPeriodEnd: data.currentPeriodEnd || null,
             cancelAtPeriodEnd: data.cancelAtPeriodEnd || false,
             updatedAt: data.updatedAt || null,
+            trialStartDate: data.trialStartDate || null,
+            trialEndDate: adminOverride.trialEndDate ?? data.trialEndDate ?? null,
+            adminGrantedFreeUntil: adminOverride.adminGrantedFreeUntil ?? data.adminGrantedFreeUntil ?? null,
           });
+          // Register with backend so admin panel can see this user
+          try {
+            await fetch('/api/admin/register-subscriber', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                status: data.status || 'none',
+                trialStartDate: data.trialStartDate || null,
+                trialEndDate: adminOverride.trialEndDate ?? data.trialEndDate ?? null,
+                isPremium: data.isPremium || false,
+                subscriptionId: data.subscriptionId || null,
+                customerId: data.customerId || null,
+                currentPeriodEnd: data.currentPeriodEnd || null,
+              }),
+            });
+          } catch (e) { /* non-critical */ }
+        } else {
+          // No subscription doc → first-time user, start trial
+          await initTrial();
         }
         setSubscriptionChecked(true);
       },
@@ -1224,6 +1314,20 @@ function App() {
     );
   }
 
+  // Compute trial/admin access
+  const now = Date.now();
+  const isOnTrial = !subscription.isPremium && 
+    subscription.status === 'trialing' && 
+    subscription.trialEndDate !== null && 
+    subscription.trialEndDate > now;
+  const hasAdminGrant = !subscription.isPremium && 
+    subscription.adminGrantedFreeUntil !== null && 
+    subscription.adminGrantedFreeUntil > now;
+  const hasFullAccess = subscription.isPremium || isOnTrial || hasAdminGrant;
+  const trialDaysLeft = isOnTrial && subscription.trialEndDate 
+    ? Math.ceil((subscription.trialEndDate - now) / (24 * 60 * 60 * 1000)) 
+    : 0;
+
   // Show paywall for logged-in users who have not purchased access
   if (!subscriptionChecked) {
     return (
@@ -1247,7 +1351,7 @@ function App() {
     );
   }
 
-  if (!subscription.isPremium) {
+  if (!hasFullAccess) {
     return (
       <div className="h-screen flex flex-col bg-background overflow-y-auto">
         <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
@@ -1280,13 +1384,14 @@ function App() {
                 <Icons.Crown />
               </div>
               <h2 className="text-2xl font-bold mb-1">Get Full Access</h2>
-              <p className="text-white/80 text-sm">Build your vocabulary with flashcards, quizzes, spaced repetition and more</p>
+              <p className="text-white/80 text-sm">Dùng thử miễn phí 7 ngày, sau đó 130.000 ₫/tháng</p>
             </div>
 
             <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
               <div className="text-center mb-6">
+                <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7 ngày dùng thử MIỄN PHÍ</div>
                 <div className="text-5xl font-bold text-foreground">130.000 ₫</div>
-                <div className="text-muted-foreground mt-1 text-sm">mỗi tháng</div>
+                <div className="text-muted-foreground mt-1 text-sm">mỗi tháng sau thời gian thử</div>
                 <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
               </div>
 
@@ -1314,11 +1419,11 @@ function App() {
                 data-testid="button-get-access"
                 className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {paddleInitialized ? 'Đăng ký · $4.95 USD/tháng' : 'Loading...'}
+                {paddleInitialized ? 'Bắt đầu dùng thử miễn phí 7 ngày' : 'Loading...'}
               </button>
 
               <p className="text-xs text-muted-foreground text-center mt-3">
-                Thanh toán an toàn qua Paddle. Hủy bất cứ lúc nào.
+                Không cần thẻ tín dụng trong thời gian thử. Sau 7 ngày: $4.95 USD/tháng. Hủy bất cứ lúc nào.
               </p>
             </div>
 
@@ -1415,6 +1520,25 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Trial / Admin Grant Banner */}
+      {(isOnTrial || hasAdminGrant) && !subscription.isPremium && (
+        <div className="flex-shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-3">
+          <span className="text-sm text-amber-700 dark:text-amber-400">
+            {isOnTrial
+              ? `Dùng thử miễn phí: còn ${trialDaysLeft} ngày`
+              : 'Tài khoản được cấp miễn phí bởi admin'}
+          </span>
+          <button
+            onClick={handleUpgrade}
+            disabled={!paddleInitialized}
+            className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline underline-offset-2 disabled:opacity-50 whitespace-nowrap"
+            data-testid="button-upgrade-banner"
+          >
+            Đăng ký ngay
+          </button>
+        </div>
+      )}
 
       {/* Premium Upgrade Dialog */}
       <UpgradeDialog
@@ -1694,6 +1818,21 @@ function App() {
               <Icons.Chart />
               <span>Statistics</span>
             </button>
+            <button
+              onClick={() => setCurrentView('settings')}
+              data-testid="button-view-settings"
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
+                currentView === 'settings'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'settings' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <Icons.Settings />
+              <span>Settings</span>
+            </button>
           </nav>
         </div>
 
@@ -1744,6 +1883,21 @@ function App() {
             <LegalView type="terms" onBack={() => setCurrentView('list')} />
           )}
 
+          {currentView === 'settings' && (
+            <SettingsView
+              user={user}
+              subscription={subscription}
+              isOnTrial={isOnTrial}
+              hasAdminGrant={hasAdminGrant}
+              trialDaysLeft={trialDaysLeft}
+              paddleInitialized={paddleInitialized}
+              onUpgrade={handleUpgrade}
+              onManageSubscription={handleManageSubscription}
+              onViewPrivacy={() => setCurrentView('privacy')}
+              onViewTerms={() => setCurrentView('terms')}
+            />
+          )}
+
           {/* Footer with Legal Links */}
           <footer className="mt-8 pt-6 border-t border-border">
             <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
@@ -1771,6 +1925,161 @@ function App() {
           </footer>
         </div>
       </main>
+    </div>
+  );
+}
+
+// Settings View Component
+function SettingsView({
+  user,
+  subscription,
+  isOnTrial,
+  hasAdminGrant,
+  trialDaysLeft,
+  paddleInitialized,
+  onUpgrade,
+  onManageSubscription,
+  onViewPrivacy,
+  onViewTerms,
+}: {
+  user: any;
+  subscription: Subscription;
+  isOnTrial: boolean;
+  hasAdminGrant: boolean;
+  trialDaysLeft: number;
+  paddleInitialized: boolean;
+  onUpgrade: () => void;
+  onManageSubscription: () => void;
+  onViewPrivacy: () => void;
+  onViewTerms: () => void;
+}) {
+  const getStatusLabel = () => {
+    if (subscription.isPremium) return { label: 'Premium', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10' };
+    if (isOnTrial) return { label: `Free Trial (${trialDaysLeft} days left)`, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10' };
+    if (hasAdminGrant) return { label: 'Complimentary Access', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' };
+    return { label: 'Free', color: 'text-muted-foreground', bg: 'bg-secondary/20' };
+  };
+
+  const status = getStatusLabel();
+  const periodEndDate = subscription.currentPeriodEnd 
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString('vi-VN')
+    : null;
+  const trialEndDate = subscription.trialEndDate 
+    ? new Date(subscription.trialEndDate).toLocaleDateString('vi-VN')
+    : null;
+
+  return (
+    <div className="space-y-6 max-w-lg mx-auto" data-testid="view-settings">
+      <h2 className="text-xl font-bold text-foreground">Account & Settings</h2>
+
+      {/* Profile Section */}
+      <div className="bg-card border border-card-border rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Profile</h3>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+            {(user?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            {user?.displayName && (
+              <div className="font-semibold text-foreground truncate" data-testid="text-settings-name">{user.displayName}</div>
+            )}
+            <div className="text-sm text-muted-foreground truncate" data-testid="text-settings-email">{user?.email || 'Anonymous user'}</div>
+            <div className="text-xs text-muted-foreground/70 mt-0.5">User ID: {user?.uid?.slice(0, 12)}...</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subscription Section */}
+      <div className="bg-card border border-card-border rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Subscription</h3>
+
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-muted-foreground">Current Plan</span>
+          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${status.bg} ${status.color}`} data-testid="text-settings-plan">
+            {status.label}
+          </span>
+        </div>
+
+        {subscription.isPremium && periodEndDate && (
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-muted-foreground">{subscription.cancelAtPeriodEnd ? 'Access until' : 'Next billing date'}</span>
+            <span className="text-sm text-foreground" data-testid="text-settings-period">{periodEndDate}</span>
+          </div>
+        )}
+
+        {isOnTrial && trialEndDate && (
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-muted-foreground">Trial ends</span>
+            <span className="text-sm text-foreground" data-testid="text-settings-trial-end">{trialEndDate}</span>
+          </div>
+        )}
+
+        {subscription.cancelAtPeriodEnd && (
+          <div className="mb-4 text-sm text-amber-700 dark:text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg">
+            Your subscription is set to cancel at the end of the current period.
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {!subscription.isPremium && (
+            <button
+              onClick={onUpgrade}
+              disabled={!paddleInitialized}
+              data-testid="button-settings-upgrade"
+              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {paddleInitialized ? (isOnTrial ? 'Upgrade to Premium' : 'Start Free Trial') : 'Loading...'}
+            </button>
+          )}
+          {subscription.isPremium && subscription.customerId && (
+            <button
+              onClick={onManageSubscription}
+              data-testid="button-settings-manage-subscription"
+              className="w-full border border-border text-foreground py-2.5 rounded-xl font-semibold text-sm hover:bg-secondary/20 transition-colors"
+            >
+              Manage Subscription
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Legal Section */}
+      <div className="bg-card border border-card-border rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Legal</h3>
+        <div className="space-y-2">
+          <button
+            onClick={onViewPrivacy}
+            data-testid="button-settings-privacy"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary/20 transition-colors text-left"
+          >
+            <span className="text-sm text-foreground">Privacy Policy</span>
+            <Icons.ExternalLink />
+          </button>
+          <button
+            onClick={onViewTerms}
+            data-testid="button-settings-terms"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary/20 transition-colors text-left"
+          >
+            <span className="text-sm text-foreground">Terms of Service &amp; Refund Policy</span>
+            <Icons.ExternalLink />
+          </button>
+        </div>
+      </div>
+
+      {/* Contact Section */}
+      <div className="bg-card border border-card-border rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Support</h3>
+        <div className="text-sm text-muted-foreground">
+          <p>Questions or refund requests? Contact us at:</p>
+          <a
+            href="mailto:ace.apps.44@gmail.com"
+            className="text-orange-600 dark:text-orange-400 font-medium hover:underline"
+            data-testid="link-settings-email"
+          >
+            ace.apps.44@gmail.com
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

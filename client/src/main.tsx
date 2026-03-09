@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import AdminPanel from "./AdminPanel";
 import "./index.css";
 
 // Handle Firebase permission errors gracefully
@@ -9,9 +10,9 @@ window.addEventListener('unhandledrejection', (event) => {
     console.warn('Firebase permission error - Security Rules not configured yet');
     console.info('Please configure Firebase Security Rules to enable data persistence.');
     console.info('See FIREBASE_SECURITY_RULES.md for instructions.');
-    // Prevent the error from showing in the Vite error overlay
     event.preventDefault();
   }
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+const isAdminRoute = window.location.pathname === '/admin' || window.location.pathname === '/admin/';
+createRoot(document.getElementById("root")!).render(isAdminRoute ? <AdminPanel /> : <App />);
