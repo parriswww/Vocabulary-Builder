@@ -1128,9 +1128,9 @@ function App() {
 
         {/* Sticky Header */}
         <header className="sticky top-0 z-50 flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 shadow-lg">
-          <div className="flex items-center justify-between max-w-lg mx-auto">
-            <h1 className="text-xl font-bold text-white tracking-tight">Vocabulary Builder</h1>
-            <div className="flex items-center gap-2">
+          <div className="relative flex items-center justify-center max-w-lg mx-auto py-1">
+            <h1 className="text-[2.5rem] font-bold text-white tracking-tight text-center pr-28">Vocabulary Builder</h1>
+            <div className="absolute right-0 flex items-center gap-2">
               <button
                 onClick={() => scrollToAuth('login')}
                 data-testid="button-header-login"
@@ -1177,6 +1177,13 @@ function App() {
                 className="w-full max-w-xs bg-white/20 backdrop-blur-sm text-white font-medium py-2.5 rounded-xl border border-white/30 hover:bg-white/30 transition-all text-sm"
               >
                 Already have an account? Log In
+              </button>
+              <button
+                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                data-testid="link-subscription-price"
+                className="text-white text-sm underline underline-offset-2 hover:text-white/80 transition-colors"
+              >
+                Subscription Price
               </button>
             </div>
           </div>
