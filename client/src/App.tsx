@@ -1152,7 +1152,7 @@ function App() {
                 aria-label="Toggle language"
                 title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
               >
-                {language === 'en' ? 'VI' : 'EN'}
+                {language === 'en' ? 'VN' : 'EN'}
               </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -1401,7 +1401,7 @@ function App() {
                 className="px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors text-xs font-bold tracking-wide"
                 aria-label="Toggle language"
               >
-                {language === 'en' ? 'VI' : 'EN'}
+                {language === 'en' ? 'VN' : 'EN'}
               </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -1434,7 +1434,7 @@ function App() {
                 aria-label="Toggle language"
                 title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
               >
-                {language === 'en' ? 'VI' : 'EN'}
+                {language === 'en' ? 'VN' : 'EN'}
               </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -1583,7 +1583,7 @@ function App() {
               aria-label="Toggle language"
               title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
             >
-              {language === 'en' ? 'VI' : 'EN'}
+              {language === 'en' ? 'VN' : 'EN'}
             </button>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
