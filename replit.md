@@ -6,6 +6,13 @@ A mobile-styled vocabulary learning web application built with React, TypeScript
 
 ## Recent Changes (March 9, 2026)
 
+**Google Sign-In:**
+- Added "Continue with Google" button to auth form (login and signup modes)
+- Uses Firebase `signInWithPopup` with `GoogleAuthProvider`
+- Google profile (displayName, email) synced to Firestore on first sign-in
+- Popup cancelled errors handled silently; other errors shown to user
+- **Requires**: Google sign-in provider enabled in Firebase Console → Authentication → Sign-in method → Google
+
 **7-Day Free Trial:**
 - New users automatically get a 7-day free trial on first login (no credit card needed)
 - Trial stored in Firestore at `artifacts/{appId}/users/{uid}/metadata/subscription` with `trialStartDate` and `trialEndDate`
