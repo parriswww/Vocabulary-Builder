@@ -200,44 +200,6 @@ const Icons = {
   ),
 };
 
-// Translations
-const TRANSLATIONS = {
-  en: {
-    trialBadge: '7-DAY FREE TRIAL',
-    paywallSubtitle: '7-day free trial, then 130,000 ₫/month',
-    perMonthAfterTrial: 'per month after trial',
-    perMonth: 'per month',
-    startTrial: 'Start your 7-day free trial',
-    trialDisclaimer: 'No credit card required during trial. After 7 days: $4.95 USD/month. Cancel anytime.',
-    trialBannerActive: (days: number) => `Free trial: ${days} day${days === 1 ? '' : 's'} remaining`,
-    trialBannerAdmin: 'Complimentary access granted by admin',
-    subscribeNow: 'Subscribe now',
-    upgradeNow: 'Subscribe now',
-    maybeLater: 'Maybe later',
-    securePaddle: 'Secure payment via Paddle. Cancel anytime.',
-    dialogTitle: 'Get Full Access',
-    dialogSubtitle: 'Remove all limitations and support development',
-  },
-  vi: {
-    trialBadge: '7 ngày dùng thử MIỄN PHÍ',
-    paywallSubtitle: 'Dùng thử miễn phí 7 ngày, sau đó 130.000 ₫/tháng',
-    perMonthAfterTrial: 'mỗi tháng sau thời gian thử',
-    perMonth: 'mỗi tháng',
-    startTrial: 'Bắt đầu dùng thử miễn phí 7 ngày',
-    trialDisclaimer: 'Không cần thẻ tín dụng trong thời gian thử. Sau 7 ngày: $4.95 USD/tháng. Hủy bất cứ lúc nào.',
-    trialBannerActive: (days: number) => `Dùng thử miễn phí: còn ${days} ngày`,
-    trialBannerAdmin: 'Tài khoản được cấp miễn phí bởi admin',
-    subscribeNow: 'Đăng ký ngay',
-    upgradeNow: 'Đăng ký · $4.95 USD/tháng',
-    maybeLater: 'Để sau',
-    securePaddle: 'Thanh toán an toàn qua Paddle. Hủy bất cứ lúc nào.',
-    dialogTitle: 'Mở khóa toàn bộ ứng dụng',
-    dialogSubtitle: 'Học từ vựng hiệu quả với flashcard, quiz và lặp lại ngắt quãng',
-  },
-} as const;
-
-type Language = 'en' | 'vi';
-
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms' | 'settings';
 
 // Premium Upgrade Dialog Component
@@ -246,13 +208,11 @@ function UpgradeDialog({
   onClose, 
   onUpgrade, 
   isReady,
-  lang,
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onUpgrade: () => void; 
   isReady: boolean;
-  lang: typeof TRANSLATIONS['en'];
 }) {
   if (!isOpen) return null;
 
@@ -272,16 +232,16 @@ function UpgradeDialog({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
             <Icons.Crown />
           </div>
-          <h2 className="text-2xl font-bold text-white">{lang.dialogTitle}</h2>
-          <p className="text-white/80 mt-1">{lang.dialogSubtitle}</p>
+          <h2 className="text-2xl font-bold text-white">Get Full Access</h2>
+          <p className="text-white/80 mt-1">Remove all limitations and support development</p>
         </div>
 
         {/* Content */}
         <div className="p-6">
           <div className="text-center mb-6">
-            <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">{lang.trialBadge}</div>
+            <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
             <div className="text-4xl font-bold text-foreground">130,000 ₫</div>
-            <div className="text-muted-foreground text-sm">{lang.perMonthAfterTrial}</div>
+            <div className="text-muted-foreground text-sm">per month after trial</div>
             <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
           </div>
 
@@ -309,7 +269,7 @@ function UpgradeDialog({
             data-testid="button-upgrade-confirm"
             className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isReady ? lang.startTrial : 'Loading...'}
+            {isReady ? 'Start your 7-day free trial' : 'Loading...'}
           </button>
 
           <button
@@ -317,7 +277,7 @@ function UpgradeDialog({
             data-testid="button-upgrade-cancel"
             className="w-full mt-3 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {lang.maybeLater}
+            Maybe later
           </button>
         </div>
       </div>
@@ -371,17 +331,6 @@ function App() {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [paddleInitialized, setPaddleInitialized] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
-  const [language, setLanguage] = useState<Language>(() => {
-    return (localStorage.getItem('language') as Language) || 'en';
-  });
-  const lang = TRANSLATIONS[language];
-
-  const toggleLanguage = () => {
-    const next: Language = language === 'en' ? 'vi' : 'en';
-    setLanguage(next);
-    localStorage.setItem('language', next);
-  };
-
   // Dark mode effect
   useEffect(() => {
     if (isDarkMode) {
@@ -1175,15 +1124,6 @@ function App() {
             </h1>
             <div className="flex items-center gap-2">
               <button
-                onClick={toggleLanguage}
-                data-testid="button-toggle-language-auth"
-                className="px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors text-xs font-bold tracking-wide"
-                aria-label="Toggle language"
-                title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
-              >
-                {language === 'en' ? 'VN' : 'EN'}
-              </button>
-              <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 data-testid="button-dark-mode-auth"
                 className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -1450,23 +1390,13 @@ function App() {
         <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-white">Vocabulary Builder</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleLanguage}
-                data-testid="button-toggle-language-loading"
-                className="px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors text-xs font-bold tracking-wide"
-                aria-label="Toggle language"
-              >
-                {language === 'en' ? 'VN' : 'EN'}
-              </button>
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
-                aria-label="Toggle dark mode"
-              >
-                {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
-              </button>
-            </div>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            </button>
           </div>
         </header>
         <div className="flex-1 flex items-center justify-center">
@@ -1483,15 +1413,6 @@ function App() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-white">Vocabulary Builder</h1>
             <div className="flex items-center gap-2">
-              <button
-                onClick={toggleLanguage}
-                data-testid="button-toggle-language-paywall"
-                className="px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors text-xs font-bold tracking-wide"
-                aria-label="Toggle language"
-                title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
-              >
-                {language === 'en' ? 'VN' : 'EN'}
-              </button>
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -1518,14 +1439,14 @@ function App() {
                 <Icons.Crown />
               </div>
               <h2 className="text-2xl font-bold mb-1">Get Full Access</h2>
-              <p className="text-white/80 text-sm">{lang.paywallSubtitle}</p>
+              <p className="text-white/80 text-sm">7-day free trial, then 130,000 ₫/month</p>
             </div>
 
             <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
               <div className="text-center mb-6">
-                <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">{lang.trialBadge}</div>
+                <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
                 <div className="text-5xl font-bold text-foreground">130,000 ₫</div>
-                <div className="text-muted-foreground mt-1 text-sm">{lang.perMonthAfterTrial}</div>
+                <div className="text-muted-foreground mt-1 text-sm">per month after trial</div>
                 <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
               </div>
 
@@ -1553,11 +1474,11 @@ function App() {
                 data-testid="button-get-access"
                 className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {paddleInitialized ? lang.startTrial : 'Loading...'}
+                {paddleInitialized ? 'Start your 7-day free trial' : 'Loading...'}
               </button>
 
               <p className="text-xs text-muted-foreground text-center mt-3">
-                {lang.trialDisclaimer}
+                No credit card required during trial. After 7 days: $4.95 USD/month. Cancel anytime.
               </p>
             </div>
 
@@ -1633,15 +1554,6 @@ function App() {
               <span className="font-semibold" data-testid="text-streak">{metadata.streak}</span>
             </div>
             <button
-              onClick={toggleLanguage}
-              data-testid="button-toggle-language"
-              className="px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors text-xs font-bold tracking-wide"
-              aria-label="Toggle language"
-              title={language === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
-            >
-              {language === 'en' ? 'VN' : 'EN'}
-            </button>
-            <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               data-testid="button-dark-mode"
               className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -1669,15 +1581,15 @@ function App() {
         <div className="flex-shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-3">
           <span className="text-sm text-amber-700 dark:text-amber-400">
             {isOnTrial
-              ? lang.trialBannerActive(trialDaysLeft)
-              : lang.trialBannerAdmin}
+              ? `Free trial: ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} remaining`
+              : 'Complimentary access granted by admin'}
           </span>
           <button
             onClick={() => setShowUpgradeDialog(true)}
             className="text-xs font-semibold text-amber-700 dark:text-amber-400 underline underline-offset-2 whitespace-nowrap"
             data-testid="button-upgrade-banner"
           >
-            {lang.subscribeNow}
+            Subscribe now
           </button>
         </div>
       )}
@@ -1688,7 +1600,6 @@ function App() {
         onClose={() => setShowUpgradeDialog(false)}
         onUpgrade={handleUpgrade}
         isReady={paddleInitialized}
-        lang={lang}
       />
 
       {/* Help Dialog */}
