@@ -1129,7 +1129,7 @@ function App() {
         {/* Sticky Header */}
         <header className="sticky top-0 z-50 flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 shadow-lg">
           <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 max-w-lg mx-auto py-1">
-            <img src="/logo.png" alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white p-0.5 flex-shrink-0" />
+            <img src="/logo.png" alt="Logo" className="h-20 w-20 object-contain flex-shrink-0" />
             <h1 className="text-[2.5rem] font-bold text-white tracking-tight text-center">Vocabulary Builder</h1>
             <div className="flex items-center gap-2">
               <button
