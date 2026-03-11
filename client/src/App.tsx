@@ -1709,7 +1709,7 @@ function App() {
       <header className="flex-shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-4 shadow-lg">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-white flex items-center gap-2" data-testid="text-title">
-            <img src="/logo.png" alt="Logo" className="h-8 w-8 object-contain flex-shrink-0" />
+            <img src="/logo.png" alt="Logo" className="h-16 w-16 object-contain flex-shrink-0" />
             Vocabulary Builder
           </h1>
           <div className="flex items-center gap-2">
