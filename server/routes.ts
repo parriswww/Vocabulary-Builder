@@ -87,6 +87,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.type('text/plain').send('google.com, pub-5351173673483508, DIRECT, f08c47fec0942fa0\n');
   });
 
+  // Apple Pay domain verification for Paddle
+  app.get('/.well-known/apple-developer-merchantid-domain-association', (_req, res) => {
+    const filePath = path.resolve(import.meta.dirname, '..', 'client', 'public', '.well-known', 'apple-developer-merchantid-domain-association');
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.sendFile(filePath);
+  });
+
   // Firebase config endpoint
   app.get('/api/firebase-config', (_req, res) => {
     const config = {
