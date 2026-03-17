@@ -19,6 +19,43 @@ const subscriberRegistry = new Map<string, SubscriberRecord>();
 const adminSessions = new Map<string, number>();
 const ADMIN_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
+// --- In-memory rate limiter for admin login (IP -> { count, resetAt }) ---
+const adminLoginAttempts = new Map<string, { count: number; resetAt: number }>();
+const ADMIN_RATE_LIMIT = 10;       // max attempts
+const ADMIN_RATE_WINDOW = 15 * 60 * 1000; // 15-minute window
+
+function checkAdminRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const record = adminLoginAttempts.get(ip);
+  if (!record || now > record.resetAt) {
+    adminLoginAttempts.set(ip, { count: 1, resetAt: now + ADMIN_RATE_WINDOW });
+    return { allowed: true };
+  }
+  if (record.count >= ADMIN_RATE_LIMIT) {
+    return { allowed: false, retryAfter: Math.ceil((record.resetAt - now) / 1000) };
+  }
+  record.count++;
+  return { allowed: true };
+}
+
+// --- Paddle webhook signature verification ---
+function verifyPaddleWebhook(rawBody: Buffer | string, signatureHeader: string, secret: string): boolean {
+  try {
+    const parts = signatureHeader.split(';');
+    const tsPart = parts.find(p => p.startsWith('ts='));
+    const h1Part = parts.find(p => p.startsWith('h1='));
+    if (!tsPart || !h1Part) return false;
+
+    const ts = tsPart.slice(3);
+    const h1 = h1Part.slice(3);
+    const signedPayload = `${ts}:${typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8')}`;
+    const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(h1, 'hex'));
+  } catch {
+    return false;
+  }
+}
+
 function generateAdminToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
@@ -163,6 +200,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- Admin: Login ---
   app.post('/api/admin/auth', (req, res) => {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const rateCheck = checkAdminRateLimit(ip);
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.retryAfter));
+      return res.status(429).json({ error: `Too many login attempts. Try again in ${rateCheck.retryAfter} seconds.` });
+    }
+
     const { password } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -262,6 +306,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- Paddle webhook handler ---
   app.post('/api/webhooks/paddle', async (req, res) => {
     try {
+      const webhookSecret = process.env.PADDLE_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const signature = req.headers['paddle-signature'] as string;
+        if (!signature) {
+          console.warn('Paddle webhook rejected: missing Paddle-Signature header');
+          return res.status(400).send('Missing signature');
+        }
+        const rawBody = req.rawBody as Buffer;
+        if (!verifyPaddleWebhook(rawBody, signature, webhookSecret)) {
+          console.warn('Paddle webhook rejected: invalid signature');
+          return res.status(400).send('Invalid signature');
+        }
+      } else {
+        console.warn('PADDLE_WEBHOOK_SECRET not set — webhook signature verification is disabled. Set it in environment secrets.');
+      }
+
       const event = req.body as PaddleWebhookEvent;
       console.log('Paddle webhook received:', event.event_type);
 
@@ -343,9 +403,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- Customer portal session ---
   app.post('/api/subscription/portal', async (req, res) => {
     try {
-      const { customerId, subscriptionId } = req.body;
+      const { customerId, subscriptionId, uid } = req.body;
       if (!customerId || !process.env.PADDLE_API_KEY) {
         return res.status(400).json({ error: 'Missing required data' });
+      }
+
+      // Verify the customerId belongs to the requesting user
+      if (uid) {
+        const record = subscriberRegistry.get(uid);
+        if (record && record.customerId && record.customerId !== customerId) {
+          return res.status(403).json({ error: 'Customer ID mismatch' });
+        }
       }
 
       const response = await fetch(

@@ -600,6 +600,7 @@ function App() {
         body: JSON.stringify({
           customerId: subscription.customerId,
           subscriptionId: subscription.subscriptionId,
+          uid: user?.uid,
         }),
       });
 

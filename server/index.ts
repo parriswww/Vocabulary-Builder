@@ -1,8 +1,45 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://cdn.paddle.com",
+        "https://sandbox-cdn.paddle.com",
+        "https://www.gstatic.com",
+        "https://apis.google.com",
+      ],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: [
+        "'self'",
+        "https://*.firebaseio.com",
+        "https://*.googleapis.com",
+        "https://firestore.googleapis.com",
+        "https://identitytoolkit.googleapis.com",
+        "https://securetoken.googleapis.com",
+        "https://sandbox-api.paddle.com",
+        "https://api.paddle.com",
+        "https://cdn.paddle.com",
+        "wss://*.firebaseio.com",
+      ],
+      frameSrc: ["'self'", "https://cdn.paddle.com", "https://sandbox-cdn.paddle.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 declare module 'http' {
   interface IncomingMessage {
