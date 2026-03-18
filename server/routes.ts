@@ -190,8 +190,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: Date.now(),
       });
 
-      // Persist permanent grant to Firestore so it survives server restarts
-      if (hasPermanentGrant) {
+      // Persist permanent grant to Firestore only on first registration (prevents infinite onSnapshot loop)
+      const grantAlreadyPersisted = existing.adminGrantedFreeUntil === FREE_FOREVER_TIMESTAMP;
+      if (hasPermanentGrant && !grantAlreadyPersisted) {
         const projectId = process.env.FIREBASE_PROJECT_ID;
         const appId = projectId || 'vocab-app';
         if (projectId) {

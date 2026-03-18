@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
   signInAnonymously, 
@@ -388,18 +388,17 @@ function App() {
         // Store appId globally for later use
         window.__app_id = appId;
 
-        const app = initializeApp(config);
+        // Safely get or create the Firebase app (handles HMR/hot reload re-runs)
+        const app = getApps().length > 0 ? getApp() : initializeApp(config);
         const authInstance = getAuth(app);
         const dbInstance = getFirestore(app);
 
-        console.log('[firebase] initialized, setting auth');
         setFirebaseApp(app);
         setAuth(authInstance);
         setDb(dbInstance);
 
-        // Listen to auth state changes
+        // Listen to auth state changes — always re-subscribe on HMR re-mounts
         const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-          console.log('[firebase] auth state changed, user=', !!user);
           setUser(user);
           setLoading(false);
         });
@@ -407,8 +406,6 @@ function App() {
         return unsubscribe;
       } catch (error) {
         console.error('Firebase initialization error:', error);
-        console.warn('App will run in demo mode without Firebase persistence');
-        // Set loading to false to allow app to render
         setLoading(false);
       }
     };
@@ -948,19 +945,14 @@ function App() {
   };
 
   const handleLogin = async (email: string, password: string) => {
-    console.log('[login] called, auth=', !!auth, 'email=', email);
     if (!auth) {
-      console.error('[login] auth is null — Firebase not initialized');
       setAuthError('Authentication not ready. Please refresh the page and try again.');
       return;
     }
     setAuthError('');
     try {
-      console.log('[login] calling signInWithEmailAndPassword...');
       await signInWithEmailAndPassword(auth, email, password);
-      console.log('[login] success');
     } catch (error: any) {
-      console.error('[login] error:', error.code, error.message);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         setAuthError('Incorrect email or password. If you signed up with Google, please use the "Continue with Google" button.');
       } else if (error.code === 'auth/too-many-requests') {
