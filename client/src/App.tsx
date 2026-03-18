@@ -1017,10 +1017,14 @@ function App() {
     setAuthSuccess('');
     try {
       await sendPasswordResetEmail(auth, email);
-      setAuthSuccess('Password reset email sent! Check your inbox.');
+      setAuthSuccess('Check your inbox — we sent a link to set your password. Once set, you can log in with email and password.');
     } catch (error: any) {
       console.error('Password reset error:', error);
-      setAuthError(error.message || 'Failed to send password reset email');
+      if (error.code === 'auth/user-not-found') {
+        setAuthError('No account found with that email. Try creating a new account instead.');
+      } else {
+        setAuthError(error.message || 'Failed to send password reset email');
+      }
     }
   };
 
