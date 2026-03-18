@@ -15,6 +15,13 @@ const FIREBASE_AUTH_URL = 'https://identitytoolkit.googleapis.com/v1';
 // --- In-memory subscriber registry ---
 const subscriberRegistry = new Map<string, SubscriberRecord>();
 
+// --- Email-based permanent free access grants (persists across sessions via Firestore) ---
+// Add emails here or via POST /api/admin/grant-forever-by-email
+const emailForeverGrants = new Set<string>([
+  'parriswww@gmail.com',
+]);
+const FREE_FOREVER_TIMESTAMP = new Date('2099-12-31').getTime();
+
 // --- Admin session tokens (token -> expiry timestamp) ---
 const adminSessions = new Map<string, number>();
 const ADMIN_SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -159,6 +166,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { uid, email, displayName, status, trialStartDate, trialEndDate, subscriptionId, customerId, isPremium, currentPeriodEnd } = req.body;
       if (!uid) return res.status(400).json({ error: 'Missing uid' });
 
+      // Check if this email has a permanent free grant
+      const normalizedEmail = (email || '').toLowerCase().trim();
+      const hasPermanentGrant = normalizedEmail && emailForeverGrants.has(normalizedEmail);
+      const adminGrantedFreeUntil = hasPermanentGrant
+        ? FREE_FOREVER_TIMESTAMP
+        : (subscriberRegistry.get(uid)?.adminGrantedFreeUntil ?? null);
+
       const existing = subscriberRegistry.get(uid) || {} as SubscriberRecord;
       subscriberRegistry.set(uid, {
         uid,
@@ -168,13 +182,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPremium: isPremium ?? existing.isPremium ?? false,
         trialStartDate: trialStartDate ?? existing.trialStartDate ?? null,
         trialEndDate: trialEndDate ?? existing.trialEndDate ?? null,
-        adminGrantedFreeUntil: existing.adminGrantedFreeUntil ?? null,
+        adminGrantedFreeUntil,
         subscriptionId: subscriptionId || existing.subscriptionId || null,
         customerId: customerId || existing.customerId || null,
         currentPeriodEnd: currentPeriodEnd ?? existing.currentPeriodEnd ?? null,
         cancelAtPeriodEnd: existing.cancelAtPeriodEnd ?? false,
         updatedAt: Date.now(),
       });
+
+      // Persist permanent grant to Firestore so it survives server restarts
+      if (hasPermanentGrant) {
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const appId = projectId || 'vocab-app';
+        if (projectId) {
+          await firestoreUpdateSubscription(projectId, appId, uid, {
+            adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP,
+            updatedAt: Date.now(),
+          });
+          console.log(`Permanent free access applied for ${normalizedEmail} (uid: ${uid})`);
+        }
+      }
 
       res.json({ success: true });
     } catch (err) {
@@ -294,6 +321,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({ success: true, freeUntil });
+  });
+
+  // --- Admin: Grant forever free access by email ---
+  app.post('/api/admin/grant-forever-by-email', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+
+    const normalizedEmail = email.toLowerCase().trim();
+    emailForeverGrants.add(normalizedEmail);
+
+    // Also apply immediately to any already-registered user with this email
+    let appliedToUid: string | null = null;
+    for (const [uid, record] of subscriberRegistry.entries()) {
+      if ((record.email || '').toLowerCase().trim() === normalizedEmail) {
+        subscriberRegistry.set(uid, { ...record, adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP, updatedAt: Date.now() });
+        appliedToUid = uid;
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const appId = projectId || 'vocab-app';
+        if (projectId) {
+          await firestoreUpdateSubscription(projectId, appId, uid, {
+            adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP,
+            updatedAt: Date.now(),
+          });
+        }
+        break;
+      }
+    }
+
+    console.log(`Permanent free access granted to email: ${normalizedEmail}${appliedToUid ? ` (uid: ${appliedToUid})` : ' (will apply on next login)'}`);
+    res.json({ success: true, email: normalizedEmail, appliedToUid });
   });
 
   // --- Admin: Logout (revoke session) ---
