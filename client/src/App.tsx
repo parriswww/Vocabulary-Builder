@@ -311,6 +311,9 @@ function App() {
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'reset'>('login');
   const [authError, setAuthError] = useState<string>('');
+  // Google sign-in only works on domains whitelisted in Firebase Console.
+  // Dev preview domains (*.replit.dev) are never whitelisted — hide the button there.
+  const googleSignInAvailable = !window.location.hostname.endsWith('.replit.dev');
   const [authSuccess, setAuthSuccess] = useState<string>('');
   
   // Subscription state for premium features
@@ -1339,7 +1342,7 @@ function App() {
                 </div>
               )}
 
-              {authMode !== 'reset' && (
+              {authMode !== 'reset' && googleSignInAvailable && (
                 <>
                   <button
                     type="button"

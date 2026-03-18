@@ -335,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Also apply immediately to any already-registered user with this email
     let appliedToUid: string | null = null;
-    for (const [uid, record] of subscriberRegistry.entries()) {
+    for (const [uid, record] of Array.from(subscriberRegistry.entries())) {
       if ((record.email || '').toLowerCase().trim() === normalizedEmail) {
         subscriberRegistry.set(uid, { ...record, adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP, updatedAt: Date.now() });
         appliedToUid = uid;
