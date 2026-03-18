@@ -361,48 +361,62 @@ function App() {
 
   // Initialize Firebase
   useEffect(() => {
+    const CONFIG_CACHE_KEY = 'vb_firebase_cfg';
+
+    const initWithConfig = (config: any, appId: string) => {
+      window.__app_id = appId;
+      const app = getApps().length > 0 ? getApp() : initializeApp(config);
+      const authInstance = getAuth(app);
+      const dbInstance = getFirestore(app);
+      setFirebaseApp(app);
+      setAuth(authInstance);
+      setDb(dbInstance);
+      const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+        setUser(user);
+        setLoading(false);
+      });
+      return unsubscribe;
+    };
+
     const initFirebase = async () => {
       try {
-        // Fetch Firebase config from server
-        let config;
-        let appId;
-        
+        // Use cached config immediately so Firebase initializes without waiting
+        // for a network round-trip — critical for signInWithRedirect to work
+        const cached = localStorage.getItem(CONFIG_CACHE_KEY);
+        let unsubscribe: (() => void) | undefined;
+        if (cached) {
+          try {
+            const { config, appId } = JSON.parse(cached);
+            unsubscribe = initWithConfig(config, appId);
+          } catch (_) { /* invalid cache */ }
+        }
+
+        // Fetch fresh config in background (or on first load without cache)
         try {
           const response = await fetch('/api/firebase-config');
           const data = await response.json();
-          config = data.config;
-          appId = data.appId;
+          localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ config: data.config, appId: data.appId }));
+          if (!unsubscribe) {
+            // No cached config — initialize now with fresh config
+            unsubscribe = initWithConfig(data.config, data.appId);
+          } else {
+            // Already initialized — just update appId in case it changed
+            window.__app_id = data.appId;
+          }
         } catch (fetchError) {
-          console.warn('Could not fetch Firebase config from server, using fallback');
-          // Fallback to window config or demo config
-          config = window.__firebase_config || {
-            apiKey: "demo-api-key",
-            authDomain: "demo-project.firebaseapp.com",
-            projectId: "demo-project",
-            storageBucket: "demo-project.appspot.com",
-            messagingSenderId: "000000000000",
-            appId: "1:000000000000:web:0000000000000000000000"
-          };
-          appId = window.__app_id || 'demo-app';
+          if (!unsubscribe) {
+            // No cache and fetch failed — use fallback
+            const fallbackConfig = window.__firebase_config || {
+              apiKey: "demo-api-key",
+              authDomain: "demo-project.firebaseapp.com",
+              projectId: "demo-project",
+              storageBucket: "demo-project.appspot.com",
+              messagingSenderId: "000000000000",
+              appId: "1:000000000000:web:0000000000000000000000"
+            };
+            unsubscribe = initWithConfig(fallbackConfig, window.__app_id || 'demo-app');
+          }
         }
-        
-        // Store appId globally for later use
-        window.__app_id = appId;
-
-        // Safely get or create the Firebase app (handles HMR/hot reload re-runs)
-        const app = getApps().length > 0 ? getApp() : initializeApp(config);
-        const authInstance = getAuth(app);
-        const dbInstance = getFirestore(app);
-
-        setFirebaseApp(app);
-        setAuth(authInstance);
-        setDb(dbInstance);
-
-        // Listen to auth state changes — always re-subscribe on HMR re-mounts
-        const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-          setUser(user);
-          setLoading(false);
-        });
 
         return unsubscribe;
       } catch (error) {
@@ -990,6 +1004,8 @@ function App() {
     }
     try {
       const provider = new GoogleAuthProvider();
+      // Force account picker so user sees their accounts even if previously signed in
+      provider.setCustomParameters({ prompt: 'select_account' });
       // Always use redirect — popups are blocked by many browsers and privacy extensions
       await signInWithRedirect(auth, provider);
       // Page navigates away; result is handled in the getRedirectResult useEffect
