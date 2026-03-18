@@ -11,7 +11,6 @@ import {
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   type Auth, 
@@ -452,28 +451,20 @@ function App() {
     initPaddle();
   }, []);
 
-  // Handle Google Sign-In redirect result (for mobile devices)
+  // Handle Google Sign-In redirect result (runs once when auth is ready)
   useEffect(() => {
     if (!auth) return;
     getRedirectResult(auth).then((result) => {
-      if (result?.user && db) {
-        const appId = window.__app_id;
-        const userPath = `artifacts/${appId}/users/${result.user.uid}`;
-        setDoc(doc(db, `${userPath}/metadata/profile`), {
-          displayName: result.user.displayName || '',
-          email: result.user.email || '',
-          createdAt: Date.now(),
-        }, { merge: true }).catch(() => {});
-      }
+      // onAuthStateChanged handles setting the user — nothing else needed here
     }).catch((error: any) => {
       if (error.code === 'auth/unauthorized-domain') {
         const domain = window.location.hostname;
-        setAuthError(`To enable Google sign-in on this domain, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
-      } else if (error.code && error.code !== 'auth/popup-closed-by-user') {
+        setAuthError(`To enable Google sign-in, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
+      } else if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Google redirect error:', error);
       }
     });
-  }, [auth, db]);
+  }, [auth]);
 
   // Load subscription status from Firestore + trial initialization
   useEffect(() => {
@@ -530,14 +521,35 @@ function App() {
       async (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          // Fetch admin overrides from server
+          // Register with backend FIRST so the server registry is populated
+          // before we query the override — this ensures permanent free grants
+          // are visible on the very first load after a server restart.
+          try {
+            await fetch('/api/admin/register-subscriber', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                status: data.status || 'none',
+                trialStartDate: data.trialStartDate || null,
+                trialEndDate: data.trialEndDate ?? null,
+                isPremium: data.isPremium || false,
+                subscriptionId: data.subscriptionId || null,
+                customerId: data.customerId || null,
+                currentPeriodEnd: data.currentPeriodEnd || null,
+              }),
+            });
+          } catch (e) { /* non-critical */ }
+          // Now fetch admin overrides — registry is populated so grants are visible
           let adminOverride: { trialEndDate?: number | null; adminGrantedFreeUntil?: number | null } = {};
           try {
             const overrideRes = await fetch(`/api/subscription/override/${user.uid}`);
             const overrideData = await overrideRes.json();
             if (overrideData.override) adminOverride = overrideData.override;
           } catch (e) {
-            // ignore - server may not have this user yet
+            // ignore
           }
           setSubscription({
             isPremium: data.isPremium || false,
@@ -552,25 +564,6 @@ function App() {
             trialEndDate: adminOverride.trialEndDate ?? data.trialEndDate ?? null,
             adminGrantedFreeUntil: adminOverride.adminGrantedFreeUntil ?? data.adminGrantedFreeUntil ?? null,
           });
-          // Register with backend so admin panel can see this user
-          try {
-            await fetch('/api/admin/register-subscriber', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                status: data.status || 'none',
-                trialStartDate: data.trialStartDate || null,
-                trialEndDate: adminOverride.trialEndDate ?? data.trialEndDate ?? null,
-                isPremium: data.isPremium || false,
-                subscriptionId: data.subscriptionId || null,
-                customerId: data.customerId || null,
-                currentPeriodEnd: data.currentPeriodEnd || null,
-              }),
-            });
-          } catch (e) { /* non-critical */ }
         } else {
           // No subscription doc → first-time user, start trial
           await initTrial();
@@ -991,34 +984,20 @@ function App() {
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     setAuthError('');
+    if (isDevPreview) {
+      setAuthError('Google sign-in is disabled on the preview URL. Open your published app to sign in with Google.');
+      return;
+    }
     try {
       const provider = new GoogleAuthProvider();
-      const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (isMobile) {
-        // Mobile browsers block popups — use redirect flow instead
-        await signInWithRedirect(auth, provider);
-        // Page will redirect; result is handled in the getRedirectResult useEffect above
-        return;
-      }
-      const result = await signInWithPopup(auth, provider);
-      if (db && result.user) {
-        const appId = window.__app_id;
-        const userPath = `artifacts/${appId}/users/${result.user.uid}`;
-        await setDoc(doc(db, `${userPath}/metadata/profile`), {
-          displayName: result.user.displayName || '',
-          email: result.user.email || '',
-          createdAt: Date.now(),
-        }, { merge: true });
-      }
+      // Always use redirect — popups are blocked by many browsers and privacy extensions
+      await signInWithRedirect(auth, provider);
+      // Page navigates away; result is handled in the getRedirectResult useEffect
     } catch (error: any) {
       if (error.code === 'auth/unauthorized-domain') {
         const domain = window.location.hostname;
-        if (isDevPreview) {
-          setAuthError('Google sign-in is disabled on the preview URL. To use Google sign-in, open your published app (not the .replit.dev preview).');
-        } else {
-          setAuthError(`To enable Google sign-in, go to Firebase Console → Authentication → Settings → Authorized domains → Add "${domain}". Until then, please create an account with your email and password below.`);
-        }
-      } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        setAuthError(`To enable Google sign-in, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
+      } else {
         console.error('Google sign-in error:', error);
         setAuthError(error.message || 'Failed to sign in with Google');
       }
