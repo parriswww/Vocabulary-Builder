@@ -313,7 +313,7 @@ function App() {
   const [authError, setAuthError] = useState<string>('');
   // Google sign-in only works on domains whitelisted in Firebase Console.
   // Dev preview domains (*.replit.dev) are never whitelisted — hide the button there.
-  const googleSignInAvailable = !window.location.hostname.endsWith('.replit.dev');
+  const isDevPreview = window.location.hostname.endsWith('.replit.dev');
   const [authSuccess, setAuthSuccess] = useState<string>('');
   
   // Subscription state for premium features
@@ -392,12 +392,14 @@ function App() {
         const authInstance = getAuth(app);
         const dbInstance = getFirestore(app);
 
+        console.log('[firebase] initialized, setting auth');
         setFirebaseApp(app);
         setAuth(authInstance);
         setDb(dbInstance);
 
         // Listen to auth state changes
         const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+          console.log('[firebase] auth state changed, user=', !!user);
           setUser(user);
           setLoading(false);
         });
@@ -940,14 +942,26 @@ function App() {
   };
 
   const handleLogin = async (email: string, password: string) => {
-    if (!auth) return;
-    
+    console.log('[login] called, auth=', !!auth, 'email=', email);
+    if (!auth) {
+      console.error('[login] auth is null — Firebase not initialized');
+      setAuthError('Authentication not ready. Please refresh the page and try again.');
+      return;
+    }
     setAuthError('');
     try {
+      console.log('[login] calling signInWithEmailAndPassword...');
       await signInWithEmailAndPassword(auth, email, password);
+      console.log('[login] success');
     } catch (error: any) {
-      console.error('Login error:', error);
-      setAuthError(error.message || 'Failed to log in');
+      console.error('[login] error:', error.code, error.message);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        setAuthError('Incorrect email or password. If you signed up with Google, please use the "Continue with Google" button.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setAuthError('Too many failed attempts. Please try again later.');
+      } else {
+        setAuthError(error.message || 'Failed to log in');
+      }
     }
   };
 
@@ -968,7 +982,11 @@ function App() {
       }
     } catch (error: any) {
       if (error.code === 'auth/unauthorized-domain') {
-        setAuthError('Google sign-in is not enabled for this domain. Please use your email and password to log in instead.');
+        if (isDevPreview) {
+          setAuthError('Google sign-in does not work on the developer preview URL. Please open the published app to use Google sign-in, or create an email/password account here.');
+        } else {
+          setAuthError('Google sign-in is not authorized for this domain. Please contact support or use email/password.');
+        }
       } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Google sign-in error:', error);
         setAuthError(error.message || 'Failed to sign in with Google');
@@ -1342,7 +1360,7 @@ function App() {
                 </div>
               )}
 
-              {authMode !== 'reset' && googleSignInAvailable && (
+              {authMode !== 'reset' && (
                 <>
                   <button
                     type="button"
