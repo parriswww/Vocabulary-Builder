@@ -471,23 +471,24 @@ function App() {
   // Handle Google Sign-In redirect result (runs once when auth is ready)
   useEffect(() => {
     if (!auth) return;
-    setRedirectPending(true);
+    // Only show the spinner if we actually started a Google sign-in
+    const wasGoogleSignIn = sessionStorage.getItem('googleSignInPending') === '1';
+    if (wasGoogleSignIn) setRedirectPending(true);
+
     getRedirectResult(auth).then((result) => {
-      // onAuthStateChanged handles setting the user — nothing extra needed here
+      sessionStorage.removeItem('googleSignInPending');
       setRedirectPending(false);
     }).catch((error: any) => {
+      sessionStorage.removeItem('googleSignInPending');
       setRedirectPending(false);
-      // Show every error visually so the user knows what happened
+      // Only surface errors to the user if they explicitly tried Google sign-in
+      if (!wasGoogleSignIn) return;
       const code = error?.code || '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        // Ignore silent cancellations
-        return;
-      }
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
       if (code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
-        setAuthError(`Google sign-in is not enabled for this domain (${domain}). Please contact support.`);
+        setAuthError(`Google sign-in is not enabled for this domain. Please use email/password sign-in instead.`);
       } else {
-        setAuthError(error?.message || `Sign-in error: ${code || 'unknown'}`);
+        setAuthError(`Google sign-in failed: ${error?.message || code || 'unknown error'}. Try using email sign-in instead.`);
       }
     });
   }, [auth]);
@@ -998,7 +999,7 @@ function App() {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        setAuthError('Incorrect email or password. If you signed up with Google, please use the "Continue with Google" button.');
+        setAuthError('Incorrect email or password. If you have not set a password yet, use "Forgot password?" to set one up.');
       } else if (error.code === 'auth/too-many-requests') {
         setAuthError('Too many failed attempts. Please try again later.');
       } else {
@@ -1016,9 +1017,10 @@ function App() {
     }
     try {
       const provider = new GoogleAuthProvider();
-      // Force account picker so user sees their accounts even if previously signed in
       provider.setCustomParameters({ prompt: 'select_account' });
-      // Always use redirect — popups are blocked by many browsers and privacy extensions
+      // Mark that we intentionally started a Google sign-in so the redirect
+      // handler knows to show errors (not just silently ignore them)
+      sessionStorage.setItem('googleSignInPending', '1');
       await signInWithRedirect(auth, provider);
       // Page navigates away; result is handled in the getRedirectResult useEffect
     } catch (error: any) {
