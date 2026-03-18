@@ -364,64 +364,24 @@ function App() {
 
   // Initialize Firebase
   useEffect(() => {
-    const CONFIG_CACHE_KEY = 'vb_firebase_cfg';
-
-    const initWithConfig = (config: any, appId: string) => {
-      window.__app_id = appId;
-      const app = getApps().length > 0 ? getApp() : initializeApp(config);
-      const authInstance = getAuth(app);
-      const dbInstance = getFirestore(app);
-      setFirebaseApp(app);
-      setAuth(authInstance);
-      setDb(dbInstance);
-      const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-        setUser(user);
-        setLoading(false);
-      });
-      return unsubscribe;
-    };
+    // Clear any stale localStorage firebase cache from previous versions
+    localStorage.removeItem('vb_firebase_cfg');
 
     const initFirebase = async () => {
       try {
-        // Use cached config immediately so Firebase initializes without waiting
-        // for a network round-trip — critical for signInWithRedirect to work
-        const cached = localStorage.getItem(CONFIG_CACHE_KEY);
-        let unsubscribe: (() => void) | undefined;
-        if (cached) {
-          try {
-            const { config, appId } = JSON.parse(cached);
-            unsubscribe = initWithConfig(config, appId);
-          } catch (_) { /* invalid cache */ }
-        }
-
-        // Fetch fresh config in background (or on first load without cache)
-        try {
-          const response = await fetch('/api/firebase-config');
-          const data = await response.json();
-          localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ config: data.config, appId: data.appId }));
-          if (!unsubscribe) {
-            // No cached config — initialize now with fresh config
-            unsubscribe = initWithConfig(data.config, data.appId);
-          } else {
-            // Already initialized — just update appId in case it changed
-            window.__app_id = data.appId;
-          }
-        } catch (fetchError) {
-          if (!unsubscribe) {
-            // No cache and fetch failed — use fallback
-            const fallbackConfig = window.__firebase_config || {
-              apiKey: "demo-api-key",
-              authDomain: "demo-project.firebaseapp.com",
-              projectId: "demo-project",
-              storageBucket: "demo-project.appspot.com",
-              messagingSenderId: "000000000000",
-              appId: "1:000000000000:web:0000000000000000000000"
-            };
-            unsubscribe = initWithConfig(fallbackConfig, window.__app_id || 'demo-app');
-          }
-        }
-
-        return unsubscribe;
+        const response = await fetch('/api/firebase-config');
+        const data = await response.json();
+        window.__app_id = data.appId;
+        const app = getApps().length > 0 ? getApp() : initializeApp(data.config);
+        const authInstance = getAuth(app);
+        const dbInstance = getFirestore(app);
+        setFirebaseApp(app);
+        setAuth(authInstance);
+        setDb(dbInstance);
+        onAuthStateChanged(authInstance, (user) => {
+          setUser(user);
+          setLoading(false);
+        });
       } catch (error) {
         console.error('Firebase initialization error:', error);
         setLoading(false);
@@ -471,26 +431,37 @@ function App() {
   // Handle Google Sign-In redirect result (runs once when auth is ready)
   useEffect(() => {
     if (!auth) return;
-    // Only show the spinner if we actually started a Google sign-in
     const wasGoogleSignIn = sessionStorage.getItem('googleSignInPending') === '1';
     if (wasGoogleSignIn) setRedirectPending(true);
 
+    // Safety timeout: never keep the spinner up for more than 5 seconds
+    const timeout = setTimeout(() => {
+      sessionStorage.removeItem('googleSignInPending');
+      setRedirectPending(false);
+    }, 5000);
+
     getRedirectResult(auth).then((result) => {
+      clearTimeout(timeout);
       sessionStorage.removeItem('googleSignInPending');
       setRedirectPending(false);
+      if (result && wasGoogleSignIn) {
+        // Successful redirect sign-in — onAuthStateChanged handles the rest
+      }
     }).catch((error: any) => {
+      clearTimeout(timeout);
       sessionStorage.removeItem('googleSignInPending');
       setRedirectPending(false);
-      // Only surface errors to the user if they explicitly tried Google sign-in
       if (!wasGoogleSignIn) return;
       const code = error?.code || '';
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
       if (code === 'auth/unauthorized-domain') {
-        setAuthError(`Google sign-in is not enabled for this domain. Please use email/password sign-in instead.`);
+        setAuthError(`Google sign-in is not enabled for this domain. Please use email/password instead.`);
       } else {
-        setAuthError(`Google sign-in failed: ${error?.message || code || 'unknown error'}. Try using email sign-in instead.`);
+        setAuthError(`Google sign-in failed. Please use email/password instead.`);
       }
     });
+
+    return () => clearTimeout(timeout);
   }, [auth]);
 
   // Load subscription status from Firestore + trial initialization
