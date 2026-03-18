@@ -964,7 +964,9 @@ function App() {
         }, { merge: true });
       }
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+      if (error.code === 'auth/unauthorized-domain') {
+        setAuthError('Google sign-in is not enabled for this domain. Please use your email and password to log in instead.');
+      } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Google sign-in error:', error);
         setAuthError(error.message || 'Failed to sign in with Google');
       }
