@@ -5,7 +5,11 @@ import type { Subscription, PaddleWebhookEvent, SubscriberRecord } from "@shared
 import path from "path";
 import crypto from "crypto";
 
-const PADDLE_API_URL = process.env.PADDLE_ENVIRONMENT === 'production' 
+// Auto-detect Paddle environment from token/key prefix (live_ = production, test_ = sandbox)
+const paddleIsLive = (process.env.PADDLE_CLIENT_TOKEN || '').startsWith('live_') 
+  || (process.env.PADDLE_API_KEY || '').startsWith('live_')
+  || process.env.PADDLE_ENVIRONMENT === 'production';
+const PADDLE_API_URL = paddleIsLive
   ? 'https://api.paddle.com' 
   : 'https://sandbox-api.paddle.com';
 
@@ -153,9 +157,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Paddle config endpoint
   app.get('/api/paddle-config', (_req, res) => {
+    const clientToken = process.env.PADDLE_CLIENT_TOKEN || '';
+    // Auto-detect environment from token prefix: live_ = production, test_ = sandbox
+    const autoEnv = clientToken.startsWith('live_') ? 'production' : 'sandbox';
+    const environment = process.env.PADDLE_ENVIRONMENT || autoEnv;
     res.json({
-      clientToken: process.env.PADDLE_CLIENT_TOKEN || '',
-      environment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
+      clientToken,
+      environment,
       priceId: process.env.PADDLE_PRICE_ID || '',
     });
   });

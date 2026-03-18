@@ -26,6 +26,8 @@ app.use(helmet({
         "'self'",
         "https://cdn.paddle.com",
         "https://sandbox-cdn.paddle.com",
+        "https://buy.paddle.com",
+        "https://sandbox-buy.paddle.com",
         "https://*.firebaseapp.com",
         "https://accounts.google.com",
       ],
