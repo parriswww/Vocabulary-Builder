@@ -17,8 +17,9 @@ app.use(helmet({
         "https://sandbox-cdn.paddle.com",
         "https://www.gstatic.com",
         "https://apis.google.com",
+        "https://public.profitwell.com",
       ],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.paddle.com", "https://sandbox-cdn.paddle.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       frameSrc: [

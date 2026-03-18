@@ -12,6 +12,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   type Auth, 
   type User 
 } from 'firebase/auth';
@@ -449,6 +451,29 @@ function App() {
 
     initPaddle();
   }, []);
+
+  // Handle Google Sign-In redirect result (for mobile devices)
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth).then((result) => {
+      if (result?.user && db) {
+        const appId = window.__app_id;
+        const userPath = `artifacts/${appId}/users/${result.user.uid}`;
+        setDoc(doc(db, `${userPath}/metadata/profile`), {
+          displayName: result.user.displayName || '',
+          email: result.user.email || '',
+          createdAt: Date.now(),
+        }, { merge: true }).catch(() => {});
+      }
+    }).catch((error: any) => {
+      if (error.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        setAuthError(`To enable Google sign-in on this domain, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
+      } else if (error.code && error.code !== 'auth/popup-closed-by-user') {
+        console.error('Google redirect error:', error);
+      }
+    });
+  }, [auth, db]);
 
   // Load subscription status from Firestore + trial initialization
   useEffect(() => {
@@ -968,6 +993,13 @@ function App() {
     setAuthError('');
     try {
       const provider = new GoogleAuthProvider();
+      const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        // Mobile browsers block popups — use redirect flow instead
+        await signInWithRedirect(auth, provider);
+        // Page will redirect; result is handled in the getRedirectResult useEffect above
+        return;
+      }
       const result = await signInWithPopup(auth, provider);
       if (db && result.user) {
         const appId = window.__app_id;
