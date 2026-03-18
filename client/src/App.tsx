@@ -316,6 +316,9 @@ function App() {
   // Dev preview domains (*.replit.dev) are never whitelisted — hide the button there.
   const isDevPreview = window.location.hostname.endsWith('.replit.dev');
   const [authSuccess, setAuthSuccess] = useState<string>('');
+  // True while we're waiting for a Google redirect sign-in to complete.
+  // Prevents showing the login form while Firebase is still processing the redirect.
+  const [redirectPending, setRedirectPending] = useState(false);
   
   // Subscription state for premium features
   const [subscription, setSubscription] = useState<Subscription>({
@@ -468,14 +471,23 @@ function App() {
   // Handle Google Sign-In redirect result (runs once when auth is ready)
   useEffect(() => {
     if (!auth) return;
+    setRedirectPending(true);
     getRedirectResult(auth).then((result) => {
-      // onAuthStateChanged handles setting the user — nothing else needed here
+      // onAuthStateChanged handles setting the user — nothing extra needed here
+      setRedirectPending(false);
     }).catch((error: any) => {
-      if (error.code === 'auth/unauthorized-domain') {
+      setRedirectPending(false);
+      // Show every error visually so the user knows what happened
+      const code = error?.code || '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        // Ignore silent cancellations
+        return;
+      }
+      if (code === 'auth/unauthorized-domain') {
         const domain = window.location.hostname;
-        setAuthError(`To enable Google sign-in, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
-      } else if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-        console.error('Google redirect error:', error);
+        setAuthError(`Google sign-in is not enabled for this domain (${domain}). Please contact support.`);
+      } else {
+        setAuthError(error?.message || `Sign-in error: ${code || 'unknown'}`);
       }
     });
   }, [auth]);
@@ -1048,6 +1060,17 @@ function App() {
   };
 
   // Show login/signup screen if not authenticated
+  // While Google redirect sign-in is in progress, show a full-screen spinner
+  // so the user doesn't see the login form flash before Firebase finishes.
+  if (redirectPending && !user) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground text-sm">Signing you in...</p>
+      </div>
+    );
+  }
+
   if (!user) {
     // Show legal pages on auth screen
     if (authMode === 'privacy' as any || authMode === 'terms' as any || authMode === 'refund' as any) {
