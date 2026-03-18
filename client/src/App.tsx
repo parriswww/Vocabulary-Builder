@@ -937,7 +937,13 @@ function App() {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      setAuthError(error.message || 'Failed to create account');
+      if (error.code === 'auth/email-already-in-use') {
+        setAuthError('An account with this email already exists. If you signed up with Google, use the "Continue with Google" button instead.');
+      } else if (error.code === 'auth/weak-password') {
+        setAuthError('Password must be at least 6 characters.');
+      } else {
+        setAuthError(error.message || 'Failed to create account');
+      }
     }
   };
 
@@ -982,10 +988,11 @@ function App() {
       }
     } catch (error: any) {
       if (error.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
         if (isDevPreview) {
-          setAuthError('Google sign-in does not work on the developer preview URL. Please open the published app to use Google sign-in, or create an email/password account here.');
+          setAuthError('Google sign-in is disabled on the preview URL. To use Google sign-in, open your published app (not the .replit.dev preview).');
         } else {
-          setAuthError('Google sign-in is not authorized for this domain. Please contact support or use email/password.');
+          setAuthError(`To enable Google sign-in, go to Firebase Console → Authentication → Settings → Authorized domains → Add "${domain}". Until then, please create an account with your email and password below.`);
         }
       } else if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         console.error('Google sign-in error:', error);
