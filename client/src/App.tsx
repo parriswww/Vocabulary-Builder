@@ -2,17 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
-  signInAnonymously, 
-  signInWithCustomToken,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
   signOut,
   onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
   type Auth, 
   type User 
 } from 'firebase/auth';
@@ -312,13 +307,7 @@ function App() {
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'reset'>('login');
   const [authError, setAuthError] = useState<string>('');
-  // Google sign-in only works on domains whitelisted in Firebase Console.
-  // Dev preview domains (*.replit.dev) are never whitelisted — hide the button there.
-  const isDevPreview = window.location.hostname.endsWith('.replit.dev');
   const [authSuccess, setAuthSuccess] = useState<string>('');
-  // True while we're waiting for a Google redirect sign-in to complete.
-  // Prevents showing the login form while Firebase is still processing the redirect.
-  const [redirectPending, setRedirectPending] = useState(false);
   
   // Subscription state for premium features
   const [subscription, setSubscription] = useState<Subscription>({
@@ -428,41 +417,6 @@ function App() {
     initPaddle();
   }, []);
 
-  // Handle Google Sign-In redirect result (runs once when auth is ready)
-  useEffect(() => {
-    if (!auth) return;
-    const wasGoogleSignIn = sessionStorage.getItem('googleSignInPending') === '1';
-    if (wasGoogleSignIn) setRedirectPending(true);
-
-    // Safety timeout: never keep the spinner up for more than 5 seconds
-    const timeout = setTimeout(() => {
-      sessionStorage.removeItem('googleSignInPending');
-      setRedirectPending(false);
-    }, 5000);
-
-    getRedirectResult(auth).then((result) => {
-      clearTimeout(timeout);
-      sessionStorage.removeItem('googleSignInPending');
-      setRedirectPending(false);
-      if (result && wasGoogleSignIn) {
-        // Successful redirect sign-in — onAuthStateChanged handles the rest
-      }
-    }).catch((error: any) => {
-      clearTimeout(timeout);
-      sessionStorage.removeItem('googleSignInPending');
-      setRedirectPending(false);
-      if (!wasGoogleSignIn) return;
-      const code = error?.code || '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
-      if (code === 'auth/unauthorized-domain') {
-        setAuthError(`Google sign-in is not enabled for this domain. Please use email/password instead.`);
-      } else {
-        setAuthError(`Google sign-in failed. Please use email/password instead.`);
-      }
-    });
-
-    return () => clearTimeout(timeout);
-  }, [auth]);
 
   // Load subscription status from Firestore + trial initialization
   useEffect(() => {
@@ -951,7 +905,7 @@ function App() {
     } catch (error: any) {
       console.error('Signup error:', error);
       if (error.code === 'auth/email-already-in-use') {
-        setAuthError('An account with this email already exists. If you signed up with Google, use the "Continue with Google" button instead.');
+        setAuthError('An account with this email already exists. Please log in instead.');
       } else if (error.code === 'auth/weak-password') {
         setAuthError('Password must be at least 6 characters.');
       } else {
@@ -975,32 +929,6 @@ function App() {
         setAuthError('Too many failed attempts. Please try again later.');
       } else {
         setAuthError(error.message || 'Failed to log in');
-      }
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    setAuthError('');
-    if (isDevPreview) {
-      setAuthError('Google sign-in is disabled on the preview URL. Open your published app to sign in with Google.');
-      return;
-    }
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      // Mark that we intentionally started a Google sign-in so the redirect
-      // handler knows to show errors (not just silently ignore them)
-      sessionStorage.setItem('googleSignInPending', '1');
-      await signInWithRedirect(auth, provider);
-      // Page navigates away; result is handled in the getRedirectResult useEffect
-    } catch (error: any) {
-      if (error.code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
-        setAuthError(`To enable Google sign-in, add "${domain}" to Firebase Console → Authentication → Settings → Authorized domains.`);
-      } else {
-        console.error('Google sign-in error:', error);
-        setAuthError(error.message || 'Failed to sign in with Google');
       }
     }
   };
@@ -1031,18 +959,6 @@ function App() {
       }
     }
   };
-
-  // Show login/signup screen if not authenticated
-  // While Google redirect sign-in is in progress, show a full-screen spinner
-  // so the user doesn't see the login form flash before Firebase finishes.
-  if (redirectPending && !user) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-muted-foreground text-sm">Signing you in...</p>
-      </div>
-    );
-  }
 
   if (!user) {
     // Show legal pages on auth screen
@@ -1386,32 +1302,6 @@ function App() {
                 </div>
               )}
 
-              {authMode !== 'reset' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignIn}
-                    data-testid="button-google-signin"
-                    className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-input rounded-lg bg-background hover-elevate transition-colors text-foreground font-medium text-sm"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" aria-hidden="true">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                    Continue with Google
-                  </button>
-                  <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs text-muted-foreground">
-                      <span className="bg-card px-3">or continue with email</span>
-                    </div>
-                  </div>
-                </>
-              )}
 
               <form
                 onSubmit={(e) => {
