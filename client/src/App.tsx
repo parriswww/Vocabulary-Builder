@@ -2310,29 +2310,43 @@ function SettingsView({
 // Parsed CSV word row
 interface CsvWord { word: string; definition: string; sentence: string; }
 
-// Lightweight CSV parser — handles double-quoted fields with embedded commas
+// Stateful CSV parser — handles double-quoted fields with embedded commas and newlines
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
-  for (const rawLine of text.split(/\r?\n/)) {
-    if (!rawLine.trim()) continue;
-    const row: string[] = [];
-    let field = '';
-    let inQuotes = false;
-    for (let i = 0; i < rawLine.length; i++) {
-      const ch = rawLine[i];
-      if (inQuotes) {
-        if (ch === '"' && rawLine[i + 1] === '"') { field += '"'; i++; }
-        else if (ch === '"') { inQuotes = false; }
-        else { field += ch; }
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  // Normalize line endings to \n
+  const input = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (inQuotes) {
+      if (ch === '"' && input[i + 1] === '"') {
+        field += '"'; i++;
+      } else if (ch === '"') {
+        inQuotes = false;
       } else {
-        if (ch === '"') { inQuotes = true; }
-        else if (ch === ',') { row.push(field.trim()); field = ''; }
-        else { field += ch; }
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        row.push(field.trim()); field = '';
+      } else if (ch === '\n') {
+        row.push(field.trim()); field = '';
+        if (row.some((c) => c.length > 0)) rows.push(row);
+        row = [];
+      } else {
+        field += ch;
       }
     }
-    row.push(field.trim());
-    rows.push(row);
   }
+  // Handle last row if file doesn't end with newline
+  row.push(field.trim());
+  if (row.some((c) => c.length > 0)) rows.push(row);
+
   return rows;
 }
 
