@@ -2476,6 +2476,12 @@ function WordListView({
 
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Found in file</span>
+                <span className="font-semibold text-foreground">
+                  {importPreview.rows.length + importPreview.duplicates + importPreview.invalid}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Ready to import</span>
                 <span className="font-semibold text-foreground">{importPreview.rows.length}</span>
               </div>
