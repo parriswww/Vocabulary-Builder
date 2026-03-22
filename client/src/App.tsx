@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -27,6 +27,7 @@ import {
 } from 'firebase/firestore';
 import type { Word, InsertWord, UserMetadata, Subscription } from '@shared/schema';
 import { privacyPolicyContent, termsOfServiceContent, refundPolicyContent } from './legal/privacy-policy';
+import { toast } from '@/hooks/use-toast';
 
 // Paddle types
 declare global {
@@ -760,6 +761,52 @@ function App() {
     } catch (error) {
       console.error('Error saving word:', error);
     }
+  };
+
+  // Bulk import words from CSV
+  const importWords = async (parsed: { word: string; definition: string; sentence: string }[]): Promise<{ imported: number; skipped: number }> => {
+    if (!db || !user) return { imported: 0, skipped: 0 };
+
+    const appId = window.__app_id;
+    const userPath = `artifacts/${appId}/users/${user.uid}`;
+    const wordsRef = collection(db, `${userPath}/words`);
+
+    const existingWordSet = new Set(words.map((w) => w.word.toLowerCase().trim()));
+    let imported = 0;
+    let skipped = 0;
+
+    for (const item of parsed) {
+      const key = item.word.toLowerCase().trim();
+      if (existingWordSet.has(key)) {
+        skipped++;
+        continue;
+      }
+      try {
+        const now = Date.now();
+        await addDoc(wordsRef, {
+          word: item.word.trim(),
+          definitions: [item.definition.trim()],
+          sentences: item.sentence.trim() ? [item.sentence.trim()] : [],
+          tags: [],
+          createdAt: now,
+          updatedAt: now,
+          reviewCount: 0,
+          correctCount: 0,
+          masteryLevel: 'learning',
+          nextReviewDate: now,
+          lastReviewedAt: null,
+          easeFactor: 2.5,
+          interval: 1,
+        });
+        existingWordSet.add(key);
+        imported++;
+      } catch (err) {
+        console.error('Error importing word:', item.word, err);
+        skipped++;
+      }
+    }
+
+    return { imported, skipped };
   };
 
   // SM-2 Algorithm for spaced repetition
@@ -2028,6 +2075,7 @@ function App() {
               }}
               onDelete={deleteWord}
               onSpeak={speakWord}
+              onImportWords={importWords}
             />
           )}
 
@@ -2259,7 +2307,41 @@ function SettingsView({
   );
 }
 
-// Word List View Component
+// Parsed CSV word row
+interface CsvWord { word: string; definition: string; sentence: string; }
+
+// Lightweight CSV parser — handles double-quoted fields with embedded commas
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    if (!rawLine.trim()) continue;
+    const row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < rawLine.length; i++) {
+      const ch = rawLine[i];
+      if (inQuotes) {
+        if (ch === '"' && rawLine[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { field += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { row.push(field.trim()); field = ''; }
+        else { field += ch; }
+      }
+    }
+    row.push(field.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+// Detect if the first row looks like a header (cells are all non-numeric keyword-like strings)
+function isHeaderRow(row: string[]): boolean {
+  const headerKeywords = ['word', 'term', 'vocab', 'vocabulary', 'definition', 'meaning', 'sentence', 'example', 'use'];
+  return row.slice(0, 3).some((cell) => headerKeywords.includes(cell.toLowerCase().trim()));
+}
+
 function WordListView({
   words,
   allWords,
@@ -2271,6 +2353,7 @@ function WordListView({
   onEdit,
   onDelete,
   onSpeak,
+  onImportWords,
 }: {
   words: Word[];
   allWords: Word[];
@@ -2282,11 +2365,155 @@ function WordListView({
   onEdit: (word: Word) => void;
   onDelete: (wordId: string) => void;
   onSpeak: (text: string) => void;
+  onImportWords: (parsed: CsvWord[]) => Promise<{ imported: number; skipped: number }>;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<{
+    rows: CsvWord[];
+    duplicates: number;
+    invalid: number;
+  } | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so same file can be re-selected after cancel
+    e.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const rawRows = parseCSV(text);
+      if (rawRows.length === 0) {
+        toast({ title: 'Empty file', description: 'The CSV file contains no rows.', variant: 'destructive' });
+        return;
+      }
+
+      let dataRows = rawRows;
+      if (isHeaderRow(rawRows[0])) dataRows = rawRows.slice(1);
+
+      const existingSet = new Set(allWords.map((w) => w.word.toLowerCase().trim()));
+      const valid: CsvWord[] = [];
+      let invalid = 0;
+      let duplicates = 0;
+
+      for (const row of dataRows) {
+        const word = row[0]?.trim() || '';
+        const definition = row[1]?.trim() || '';
+        const sentence = row[2]?.trim() || '';
+        if (!word || !definition) { invalid++; continue; }
+        if (existingSet.has(word.toLowerCase())) { duplicates++; continue; }
+        valid.push({ word, definition, sentence });
+      }
+
+      setImportPreview({ rows: valid, duplicates, invalid });
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importPreview || importPreview.rows.length === 0) return;
+    setImporting(true);
+    try {
+      const { imported, skipped } = await onImportWords(importPreview.rows);
+      const parts: string[] = [];
+      if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} imported`);
+      if (skipped > 0) parts.push(`${skipped} skipped`);
+      toast({ title: 'Import complete', description: parts.join(', ') + '.' });
+    } finally {
+      setImporting(false);
+      setImportPreview(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* CSV Import Preview Modal */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-foreground">Import Words</h3>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Ready to import</span>
+                <span className="font-semibold text-foreground">{importPreview.rows.length}</span>
+              </div>
+              {importPreview.duplicates > 0 && (
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Already in your list (skipped)</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">{importPreview.duplicates}</span>
+                </div>
+              )}
+              {importPreview.invalid > 0 && (
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Missing word/definition (skipped)</span>
+                  <span className="font-semibold text-red-500">{importPreview.invalid}</span>
+                </div>
+              )}
+            </div>
+
+            {importPreview.rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing new to import.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {importPreview.rows.length} new word{importPreview.rows.length !== 1 ? 's' : ''} will be added with default spaced-repetition settings.
+              </p>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setImportPreview(null)}
+                disabled={importing}
+                data-testid="button-import-cancel"
+                className="flex-1 border border-border text-foreground py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                disabled={importing || importPreview.rows.length === 0}
+                data-testid="button-import-confirm"
+                className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing ? 'Importing…' : `Import ${importPreview.rows.length}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        data-testid="input-csv-file"
+        onChange={handleFileChange}
+      />
+
       {/* Search and Filter Bar */}
       <div className="space-y-3">
+        {/* Word count + Import CSV button */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            {allWords.length} {allWords.length === 1 ? 'word' : 'words'}
+          </span>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            data-testid="button-import-csv"
+            title="Import from CSV: columns should be word, definition, sentence (with or without a header row)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-border rounded-lg text-muted-foreground hover-elevate transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a.75.75 0 0 1 .75.75v6.69l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06L7.25 8.44V1.75A.75.75 0 0 1 8 1zM1.5 11.25A2.25 2.25 0 0 1 3.75 9h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 0-.75.75v2.25c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75V11.25a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 1 0-1.5h1.5A2.25 2.25 0 0 1 14.5 11.25v2.25A2.25 2.25 0 0 1 12.25 15.75H3.75A2.25 2.25 0 0 1 1.5 13.5v-2.25z"/>
+            </svg>
+            Import CSV
+          </button>
+        </div>
+
         <div className="relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
             <Icons.Search />
