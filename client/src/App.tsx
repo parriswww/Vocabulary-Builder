@@ -2339,7 +2339,8 @@ function parseCSV(text: string): string[][] {
 // Detect if the first row looks like a header (cells are all non-numeric keyword-like strings)
 function isHeaderRow(row: string[]): boolean {
   const headerKeywords = ['word', 'term', 'vocab', 'vocabulary', 'definition', 'meaning', 'sentence', 'example', 'use'];
-  return row.slice(0, 3).some((cell) => headerKeywords.includes(cell.toLowerCase().trim()));
+  // Strip BOM from first cell before comparing
+  return row.slice(0, 3).some((cell) => headerKeywords.includes(cell.replace(/^\uFEFF/, '').toLowerCase().trim()));
 }
 
 function WordListView({
@@ -2394,6 +2395,7 @@ function WordListView({
       if (isHeaderRow(rawRows[0])) dataRows = rawRows.slice(1);
 
       const existingSet = new Set(allWords.map((w) => w.word.toLowerCase().trim()));
+      const seenInFile = new Set<string>();
       const valid: CsvWord[] = [];
       let invalid = 0;
       let duplicates = 0;
@@ -2403,7 +2405,9 @@ function WordListView({
         const definition = row[1]?.trim() || '';
         const sentence = row[2]?.trim() || '';
         if (!word || !definition) { invalid++; continue; }
-        if (existingSet.has(word.toLowerCase())) { duplicates++; continue; }
+        const key = word.toLowerCase();
+        if (existingSet.has(key) || seenInFile.has(key)) { duplicates++; continue; }
+        seenInFile.add(key);
         valid.push({ word, definition, sentence });
       }
 
@@ -2414,12 +2418,14 @@ function WordListView({
 
   const handleConfirmImport = async () => {
     if (!importPreview || importPreview.rows.length === 0) return;
+    const { duplicates: previewDuplicates, invalid: previewInvalid } = importPreview;
     setImporting(true);
     try {
       const { imported, skipped } = await onImportWords(importPreview.rows);
+      const totalSkipped = skipped + previewDuplicates + previewInvalid;
       const parts: string[] = [];
       if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} imported`);
-      if (skipped > 0) parts.push(`${skipped} skipped`);
+      if (totalSkipped > 0) parts.push(`${totalSkipped} skipped`);
       toast({ title: 'Import complete', description: parts.join(', ') + '.' });
     } finally {
       setImporting(false);
