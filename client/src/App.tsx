@@ -329,6 +329,16 @@ function App() {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [paddleInitialized, setPaddleInitialized] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
+
+  // CSV import state (lifted to App so the trigger button can live next to Add Word)
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<{
+    rows: CsvWord[];
+    duplicates: number;
+    invalid: number;
+  } | null>(null);
+  const [importing, setImporting] = useState(false);
+
   // Dark mode effect
   useEffect(() => {
     if (isDarkMode) {
@@ -804,6 +814,72 @@ function App() {
     }
 
     return { imported, skipped };
+  };
+
+  // CSV import handlers (kept in App so the trigger can live in the nav bar)
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onerror = () => {
+      toast({ title: 'Could not read file', description: 'The file could not be read. Please check the file and try again.', variant: 'destructive' });
+    };
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const rawRows = parseCSV(text);
+      if (rawRows.length === 0) {
+        toast({ title: 'Empty file', description: 'The CSV file contains no rows.', variant: 'destructive' });
+        return;
+      }
+      let dataRows = rawRows;
+      if (isHeaderRow(rawRows[0])) dataRows = rawRows.slice(1);
+      const existingSet = new Set(words.map((w) => w.word.toLowerCase().trim()));
+      const seenInFile = new Set<string>();
+      const valid: CsvWord[] = [];
+      let invalid = 0;
+      let duplicates = 0;
+      for (const row of dataRows) {
+        const word = row[0]?.trim() || '';
+        const definition = row[1]?.trim() || '';
+        const sentence = row[2]?.trim() || '';
+        if (!word || !definition) { invalid++; continue; }
+        const key = word.toLowerCase();
+        if (existingSet.has(key) || seenInFile.has(key)) { duplicates++; continue; }
+        seenInFile.add(key);
+        valid.push({ word, definition, sentence });
+      }
+      if (valid.length === 0) {
+        const reasons: string[] = [];
+        if (duplicates > 0) reasons.push(`${duplicates} already in your list`);
+        if (invalid > 0) reasons.push(`${invalid} missing word or definition`);
+        toast({
+          title: 'Nothing to import',
+          description: reasons.length > 0 ? reasons.join(', ') + '.' : 'No valid rows found in the file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setImportPreview({ rows: valid, duplicates, invalid });
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importPreview || importPreview.rows.length === 0) return;
+    const { duplicates: previewDuplicates, invalid: previewInvalid } = importPreview;
+    setImporting(true);
+    try {
+      const { imported, skipped } = await importWords(importPreview.rows);
+      const totalSkipped = skipped + previewDuplicates + previewInvalid;
+      const parts: string[] = [];
+      if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} imported`);
+      if (totalSkipped > 0) parts.push(`${totalSkipped} skipped`);
+      toast({ title: 'Import complete', description: parts.join(', ') + '.' });
+    } finally {
+      setImporting(false);
+      setImportPreview(null);
+    }
   };
 
   // SM-2 Algorithm for spaced repetition
@@ -1992,6 +2068,20 @@ function App() {
               <Icons.Plus />
               <span>Add New Word</span>
             </button>
+            {/* Import CSV — adjacent to Add New Word, visible only on Word List view */}
+            {currentView === 'list' && (
+              <button
+                onClick={() => csvFileInputRef.current?.click()}
+                data-testid="button-import-csv-nav"
+                title="Import from CSV: word, definition, sentence columns — header row optional"
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium whitespace-nowrap bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-all"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M8 1a.75.75 0 0 1 .75.75v6.69l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06L7.25 8.44V1.75A.75.75 0 0 1 8 1zM1.5 11.25A2.25 2.25 0 0 1 3.75 9h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 0-.75.75v2.25c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75V11.25a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 1 0-1.5h1.5A2.25 2.25 0 0 1 14.5 11.25v2.25A2.25 2.25 0 0 1 12.25 15.75H3.75A2.25 2.25 0 0 1 1.5 13.5v-2.25z"/>
+                </svg>
+                <span>Import CSV</span>
+              </button>
+            )}
             <button
               onClick={() => setCurrentView('flashcards')}
               data-testid="button-view-flashcards"
@@ -2072,7 +2162,6 @@ function App() {
               }}
               onDelete={deleteWord}
               onSpeak={speakWord}
-              onImportWords={importWords}
             />
           )}
 
@@ -2145,6 +2234,74 @@ function App() {
           </footer>
         </div>
       </main>
+
+      {/* Hidden CSV file input — rendered in App so nav trigger can reference it */}
+      <input
+        ref={csvFileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        data-testid="input-csv-file"
+        onChange={handleCsvFileChange}
+      />
+
+      {/* CSV Import Preview Modal — rendered in App so it works from the nav button */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-foreground">Import Words</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Found in file</span>
+                <span className="font-semibold text-foreground">
+                  {importPreview.rows.length + importPreview.duplicates + importPreview.invalid}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-muted-foreground">Ready to import</span>
+                <span className="font-semibold text-foreground">{importPreview.rows.length}</span>
+              </div>
+              {importPreview.duplicates > 0 && (
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Duplicate words (skipped)</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">{importPreview.duplicates}</span>
+                </div>
+              )}
+              {importPreview.invalid > 0 && (
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Missing word/definition (skipped)</span>
+                  <span className="font-semibold text-red-500">{importPreview.invalid}</span>
+                </div>
+              )}
+            </div>
+            {importPreview.rows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing new to import.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {importPreview.rows.length} new word{importPreview.rows.length !== 1 ? 's' : ''} will be added with default spaced-repetition settings.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setImportPreview(null)}
+                data-testid="button-import-cancel"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover-elevate"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                data-testid="button-import-confirm"
+                disabled={importing || importPreview.rows.length === 0}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-orange-500 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {importing ? 'Importing…' : `Import ${importPreview.rows.length}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast host — must be in App's root div so toasts render on all views */}
       <Toaster />
     </div>
@@ -2371,7 +2528,6 @@ function WordListView({
   onEdit,
   onDelete,
   onSpeak,
-  onImportWords,
 }: {
   words: Word[];
   allWords: Word[];
@@ -2383,183 +2539,17 @@ function WordListView({
   onEdit: (word: Word) => void;
   onDelete: (wordId: string) => void;
   onSpeak: (text: string) => void;
-  onImportWords: (parsed: CsvWord[]) => Promise<{ imported: number; skipped: number }>;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importPreview, setImportPreview] = useState<{
-    rows: CsvWord[];
-    duplicates: number;
-    invalid: number;
-  } | null>(null);
-  const [importing, setImporting] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Reset so same file can be re-selected after cancel
-    e.target.value = '';
-
-    const reader = new FileReader();
-    reader.onerror = () => {
-      toast({ title: 'Could not read file', description: 'The file could not be read. Please check the file and try again.', variant: 'destructive' });
-    };
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const rawRows = parseCSV(text);
-      if (rawRows.length === 0) {
-        toast({ title: 'Empty file', description: 'The CSV file contains no rows.', variant: 'destructive' });
-        return;
-      }
-
-      let dataRows = rawRows;
-      if (isHeaderRow(rawRows[0])) dataRows = rawRows.slice(1);
-
-      const existingSet = new Set(allWords.map((w) => w.word.toLowerCase().trim()));
-      const seenInFile = new Set<string>();
-      const valid: CsvWord[] = [];
-      let invalid = 0;
-      let duplicates = 0;
-
-      for (const row of dataRows) {
-        const word = row[0]?.trim() || '';
-        const definition = row[1]?.trim() || '';
-        const sentence = row[2]?.trim() || '';
-        if (!word || !definition) { invalid++; continue; }
-        const key = word.toLowerCase();
-        if (existingSet.has(key) || seenInFile.has(key)) { duplicates++; continue; }
-        seenInFile.add(key);
-        valid.push({ word, definition, sentence });
-      }
-
-      if (valid.length === 0) {
-        const reasons: string[] = [];
-        if (duplicates > 0) reasons.push(`${duplicates} already in your list`);
-        if (invalid > 0) reasons.push(`${invalid} missing word or definition`);
-        toast({
-          title: 'Nothing to import',
-          description: reasons.length > 0 ? reasons.join(', ') + '.' : 'No valid rows found in the file.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setImportPreview({ rows: valid, duplicates, invalid });
-    };
-    reader.readAsText(file);
-  };
-
-  const handleConfirmImport = async () => {
-    if (!importPreview || importPreview.rows.length === 0) return;
-    const { duplicates: previewDuplicates, invalid: previewInvalid } = importPreview;
-    setImporting(true);
-    try {
-      const { imported, skipped } = await onImportWords(importPreview.rows);
-      const totalSkipped = skipped + previewDuplicates + previewInvalid;
-      const parts: string[] = [];
-      if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} imported`);
-      if (totalSkipped > 0) parts.push(`${totalSkipped} skipped`);
-      toast({ title: 'Import complete', description: parts.join(', ') + '.' });
-    } finally {
-      setImporting(false);
-      setImportPreview(null);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* CSV Import Preview Modal */}
-      {importPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-foreground">Import Words</h3>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Found in file</span>
-                <span className="font-semibold text-foreground">
-                  {importPreview.rows.length + importPreview.duplicates + importPreview.invalid}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Ready to import</span>
-                <span className="font-semibold text-foreground">{importPreview.rows.length}</span>
-              </div>
-              {importPreview.duplicates > 0 && (
-                <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Duplicate words (skipped)</span>
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">{importPreview.duplicates}</span>
-                </div>
-              )}
-              {importPreview.invalid > 0 && (
-                <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Missing word/definition (skipped)</span>
-                  <span className="font-semibold text-red-500">{importPreview.invalid}</span>
-                </div>
-              )}
-            </div>
-
-            {importPreview.rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing new to import.</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {importPreview.rows.length} new word{importPreview.rows.length !== 1 ? 's' : ''} will be added with default spaced-repetition settings.
-              </p>
-            )}
-
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={() => setImportPreview(null)}
-                disabled={importing}
-                data-testid="button-import-cancel"
-                className="flex-1 border border-border text-foreground py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmImport}
-                disabled={importing || importPreview.rows.length === 0}
-                data-testid="button-import-confirm"
-                className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {importing ? 'Importing…' : `Import ${importPreview.rows.length}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        data-testid="input-csv-file"
-        onChange={handleFileChange}
-      />
-
       {/* Search and Filter Bar */}
       <div className="space-y-3">
-        {/* Word count + Import CSV button */}
+        {/* Word count */}
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted-foreground">
             {allWords.length} {allWords.length === 1 ? 'word' : 'words'}
           </span>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            data-testid="button-import-csv"
-            title="Import from CSV: columns should be word, definition, sentence (with or without a header row)"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-border rounded-lg text-muted-foreground hover-elevate transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M8 1a.75.75 0 0 1 .75.75v6.69l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06L7.25 8.44V1.75A.75.75 0 0 1 8 1zM1.5 11.25A2.25 2.25 0 0 1 3.75 9h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 0-.75.75v2.25c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75V11.25a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 1 0-1.5h1.5A2.25 2.25 0 0 1 14.5 11.25v2.25A2.25 2.25 0 0 1 12.25 15.75H3.75A2.25 2.25 0 0 1 1.5 13.5v-2.25z"/>
-            </svg>
-            Import CSV
-          </button>
         </div>
-        <p className="text-xs text-muted-foreground/70 -mt-1">
-          CSV format: word, definition, sentence — header row optional
-        </p>
 
         <div className="relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
