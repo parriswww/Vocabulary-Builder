@@ -2432,6 +2432,18 @@ function WordListView({
         valid.push({ word, definition, sentence });
       }
 
+      if (valid.length === 0) {
+        const reasons: string[] = [];
+        if (duplicates > 0) reasons.push(`${duplicates} already in your list`);
+        if (invalid > 0) reasons.push(`${invalid} missing word or definition`);
+        toast({
+          title: 'Nothing to import',
+          description: reasons.length > 0 ? reasons.join(', ') + '.' : 'No valid rows found in the file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       setImportPreview({ rows: valid, duplicates, invalid });
     };
     reader.readAsText(file);
@@ -2540,6 +2552,9 @@ function WordListView({
             Import CSV
           </button>
         </div>
+        <p className="text-xs text-muted-foreground/70 -mt-1">
+          CSV format: word, definition, sentence (one per row)
+        </p>
 
         <div className="relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
