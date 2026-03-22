@@ -2350,11 +2350,15 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
-// Detect if the first row looks like a header (cells are all non-numeric keyword-like strings)
+// Detect if the first row looks like a header — require at least 2 of the first 3 cells
+// to match known header keywords (reduces false-positive when a user's first word happens
+// to be a keyword like "word" or "example").
 function isHeaderRow(row: string[]): boolean {
-  const headerKeywords = ['word', 'term', 'vocab', 'vocabulary', 'definition', 'meaning', 'sentence', 'example', 'use'];
-  // Strip BOM from first cell before comparing
-  return row.slice(0, 3).some((cell) => headerKeywords.includes(cell.replace(/^\uFEFF/, '').toLowerCase().trim()));
+  const headerKeywords = new Set(['word', 'term', 'vocab', 'vocabulary', 'definition', 'meaning', 'sentence', 'example', 'use', 'phrase', 'translation']);
+  const matchCount = row.slice(0, 3).filter((cell) =>
+    headerKeywords.has(cell.replace(/^\uFEFF/, '').toLowerCase().trim())
+  ).length;
+  return matchCount >= 2;
 }
 
 function WordListView({
@@ -2397,6 +2401,9 @@ function WordListView({
     e.target.value = '';
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      toast({ title: 'Could not read file', description: 'The file could not be read. Please check the file and try again.', variant: 'destructive' });
+    };
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const rawRows = parseCSV(text);
