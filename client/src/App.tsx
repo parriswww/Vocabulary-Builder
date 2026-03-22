@@ -724,6 +724,19 @@ function App() {
     });
   }, [words, searchQuery, selectedTag]);
 
+  // Shared defaults for any newly created word — used by both saveWord and importWords
+  const newWordDefaults = (now = Date.now()) => ({
+    createdAt: now,
+    updatedAt: now,
+    reviewCount: 0,
+    correctCount: 0,
+    masteryLevel: 'learning' as const,
+    nextReviewDate: now,
+    lastReviewedAt: null,
+    easeFactor: 2.5,
+    interval: 1,
+  });
+
   // Add or update word
   const saveWord = async (wordData: InsertWord) => {
     if (!db || !user) return;
@@ -744,15 +757,7 @@ function App() {
         // Add new word with spaced repetition defaults
         await addDoc(wordsRef, {
           ...wordData,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          reviewCount: 0,
-          correctCount: 0,
-          masteryLevel: 'learning',
-          nextReviewDate: Date.now(), // Available for review immediately
-          lastReviewedAt: null,
-          easeFactor: 2.5,
-          interval: 1,
+          ...newWordDefaults(),
         });
       }
 
@@ -782,21 +787,12 @@ function App() {
         continue;
       }
       try {
-        const now = Date.now();
         await addDoc(wordsRef, {
           word: item.word.trim(),
           definitions: [item.definition.trim()],
           sentences: item.sentence.trim() ? [item.sentence.trim()] : [],
           tags: [],
-          createdAt: now,
-          updatedAt: now,
-          reviewCount: 0,
-          correctCount: 0,
-          masteryLevel: 'learning',
-          nextReviewDate: now,
-          lastReviewedAt: null,
-          easeFactor: 2.5,
-          interval: 1,
+          ...newWordDefaults(),
         });
         existingWordSet.add(key);
         imported++;
