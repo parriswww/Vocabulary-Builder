@@ -338,6 +338,7 @@ function App() {
     invalid: number;
   } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [csvImportTags, setCsvImportTags] = useState<string[]>([]);
 
   // Dark mode effect
   useEffect(() => {
@@ -780,7 +781,7 @@ function App() {
   };
 
   // Bulk import words from CSV
-  const importWords = async (parsed: { word: string; definition: string; sentence: string }[]): Promise<{ imported: number; skipped: number }> => {
+  const importWords = async (parsed: { word: string; definition: string; sentence: string; tags?: string[] }[]): Promise<{ imported: number; skipped: number }> => {
     if (!db || !user) return { imported: 0, skipped: 0 };
 
     const appId = window.__app_id;
@@ -802,7 +803,7 @@ function App() {
           word: item.word.trim(),
           definitions: [item.definition.trim()],
           sentences: item.sentence.trim() ? [item.sentence.trim()] : [],
-          tags: [],
+          tags: item.tags ?? [],
           ...newWordDefaults(),
         });
         existingWordSet.add(key);
@@ -870,7 +871,9 @@ function App() {
     const { duplicates: previewDuplicates, invalid: previewInvalid } = importPreview;
     setImporting(true);
     try {
-      const { imported, skipped } = await importWords(importPreview.rows);
+      const { imported, skipped } = await importWords(
+        importPreview.rows.map((r) => ({ ...r, tags: csvImportTags })),
+      );
       const totalSkipped = skipped + previewDuplicates + previewInvalid;
       const parts: string[] = [];
       if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} imported`);
@@ -879,6 +882,7 @@ function App() {
     } finally {
       setImporting(false);
       setImportPreview(null);
+      setCsvImportTags([]);
     }
   };
 
@@ -2228,6 +2232,7 @@ function App() {
           {currentView === 'lookup' && (
             <LookupView
               existingWords={words}
+              allTags={allTags}
               onImportWords={importWords}
             />
           )}
@@ -2273,7 +2278,7 @@ function App() {
       {/* CSV Import Preview Modal — rendered in App so it works from the nav button */}
       {importPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-foreground">Import Words</h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-border">
@@ -2306,9 +2311,23 @@ function App() {
                 {importPreview.rows.length} new word{importPreview.rows.length !== 1 ? 's' : ''} will be added with default spaced-repetition settings.
               </p>
             )}
+
+            {/* Batch tag picker for CSV import */}
+            {importPreview.rows.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">Tags (optional)</label>
+                <p className="text-xs text-muted-foreground">Applied to all imported words.</p>
+                <InlineTagPicker
+                  selected={csvImportTags}
+                  existingTags={allTags}
+                  onChange={setCsvImportTags}
+                />
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
-                onClick={() => setImportPreview(null)}
+                onClick={() => { setImportPreview(null); setCsvImportTags([]); }}
                 data-testid="button-import-cancel"
                 className="flex-1 py-2.5 px-4 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover-elevate"
               >
@@ -2542,6 +2561,97 @@ function isHeaderRow(row: string[]): boolean {
   return matchCount >= 2;
 }
 
+// ── Inline Tag Picker ─────────────────────────────────────────────────────────
+function InlineTagPicker({
+  selected,
+  existingTags,
+  onChange,
+  compact = false,
+}: {
+  selected: string[];
+  existingTags: string[];
+  onChange: (tags: string[]) => void;
+  compact?: boolean;
+}) {
+  const [inputVal, setInputVal] = useState('');
+
+  const toggle = (tag: string) => {
+    onChange(
+      selected.includes(tag)
+        ? selected.filter((t) => t !== tag)
+        : [...selected, tag],
+    );
+  };
+
+  const addTag = () => {
+    const tag = inputVal.trim().toLowerCase().replace(/,/g, '').trim();
+    if (!tag) return;
+    if (!selected.includes(tag)) onChange([...selected, tag]);
+    setInputVal('');
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag();
+    }
+    if (e.key === 'Backspace' && inputVal === '' && selected.length > 0) {
+      onChange(selected.slice(0, -1));
+    }
+  };
+
+  // Tags to show as pills: existing (not already selected first) + currently selected
+  const allPills = Array.from(new Set([...existingTags, ...selected]));
+
+  return (
+    <div className={`space-y-2 ${compact ? '' : ''}`}>
+      {allPills.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allPills.map((tag) => {
+            const isSelected = selected.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggle(tag)}
+                data-testid={`tag-pill-${tag}`}
+                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+                  isSelected
+                    ? 'bg-orange-500 border-orange-500 text-white'
+                    : 'bg-muted border-border text-muted-foreground hover-elevate'
+                }`}
+              >
+                {tag}
+                {isSelected && (
+                  <span className="ml-1 opacity-75">×</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={handleInputKeyDown}
+          onBlur={addTag}
+          placeholder={allPills.length === 0 ? 'Type a tag and press Enter…' : 'New tag…'}
+          data-testid="input-new-tag"
+          className="flex-1 min-w-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        />
+      </div>
+      {selected.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Tags: {selected.join(', ')}
+        </p>
+      )}
+    </div>
+  );
+}
+// ── End InlineTagPicker ───────────────────────────────────────────────────────
+
 // ── Dictionary Lookup View ────────────────────────────────────────────────────
 type LookupStatus = 'pending' | 'fetching' | 'ready' | 'not_found' | 'exists';
 interface LookupRow {
@@ -2551,14 +2661,17 @@ interface LookupRow {
   sentence: string;
   partOfSpeech: string;
   status: LookupStatus;
+  tags: string[];
 }
 
 function LookupView({
   existingWords,
+  allTags,
   onImportWords,
 }: {
   existingWords: Word[];
-  onImportWords: (parsed: { word: string; definition: string; sentence: string }[]) => Promise<{ imported: number; skipped: number }>;
+  allTags: string[];
+  onImportWords: (parsed: { word: string; definition: string; sentence: string; tags?: string[] }[]) => Promise<{ imported: number; skipped: number }>;
 }) {
   const [inputText, setInputText] = useState('');
   const [rows, setRows] = useState<LookupRow[]>([]);
@@ -2593,6 +2706,7 @@ function LookupView({
       sentence: '',
       partOfSpeech: '',
       status: existingSet.has(word.toLowerCase()) ? 'exists' : 'pending',
+      tags: [],
     }));
     setRows(initialRows);
     setIsFetching(true);
@@ -2651,7 +2765,7 @@ function LookupView({
     setIsSaving(true);
     try {
       const { imported, skipped } = await onImportWords(
-        toAdd.map((r) => ({ word: r.word, definition: r.definition, sentence: r.sentence })),
+        toAdd.map((r) => ({ word: r.word, definition: r.definition, sentence: r.sentence, tags: r.tags })),
       );
       const parts: string[] = [];
       if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} added`);
@@ -2667,6 +2781,10 @@ function LookupView({
 
   const updateRow = (id: string, field: 'definition' | 'sentence', value: string) => {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const updateRowTags = (id: string, tags: string[]) => {
+    setRows((prev) => prev.map((r) => r.id === id ? { ...r, tags } : r));
   };
 
   const readyCount = rows.filter((r) => r.status === 'ready').length;
@@ -2818,6 +2936,17 @@ function LookupView({
                       Mark as ready to add
                     </button>
                   )}
+
+                  {/* Per-word tag picker */}
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tags</label>
+                    <InlineTagPicker
+                      selected={row.tags}
+                      existingTags={allTags}
+                      onChange={(tags) => updateRowTags(row.id, tags)}
+                      compact
+                    />
+                  </div>
                 </div>
               )}
             </div>
