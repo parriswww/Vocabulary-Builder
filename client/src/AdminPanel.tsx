@@ -213,6 +213,20 @@ export default function AdminPanel() {
       )}
 
       <main className="p-6">
+        {/* Billing Setup Reminder */}
+        <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
+          <span className="text-amber-400 text-lg mt-0.5">&#9888;</span>
+          <div>
+            <p className="text-amber-300 text-sm font-semibold mb-1">Paddle Billing Setup Reminder</p>
+            <p className="text-amber-200/80 text-xs leading-relaxed">
+              Current plan: <strong>500,000 ₫ ($19 USD) every 6 months</strong>. Ensure your{' '}
+              <code className="bg-amber-900/40 px-1 py-0.5 rounded text-amber-100">PADDLE_PRICE_ID</code>{' '}
+              environment secret points to a 6-month recurring price in the Paddle dashboard. If you recently changed
+              pricing, create a new product/price in Paddle and update the secret accordingly.
+            </p>
+          </div>
+        </div>
+
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[

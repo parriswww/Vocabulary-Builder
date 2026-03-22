@@ -141,7 +141,7 @@ Vocabulary Builder is an educational web application that helps users learn and 
 
 ### Cancellation
 - You may cancel your subscription at any time through your account settings or by contacting us at ace.apps.44@gmail.com.
-- Upon cancellation, your access to the service will continue until the end of the current 30-day billing period. No partial refunds are issued for unused days after the first 14 days.
+- Upon cancellation, your access to the service will continue until the end of the current 6-month billing period. No partial refunds are issued for unused days after the first 14 days.
 
 ### Refund Policy
 - **Full Refund Within 14 Days:** If you are not satisfied with the service, you may request a full refund within the first 14 days of your first paid subscription period. To request a refund, contact us at ace.apps.44@gmail.com with the subject line "Refund Request."
@@ -213,6 +213,8 @@ export const refundPolicyContent = `
 **Last Updated: March 9, 2026**
 
 This Refund Policy applies to subscriptions purchased through Vocabulary Builder, operated by ACE-Apps. Payments are processed by Paddle.com, our Merchant of Record.
+
+**Subscription price:** 500,000 ₫ ($19 USD) billed every 6 months.
 
 ## 1. Free Trial
 
