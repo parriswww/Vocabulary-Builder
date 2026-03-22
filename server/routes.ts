@@ -508,6 +508,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dictionary proxy — avoids CSP / CORS restrictions in the browser
+  app.get('/api/dictionary/:word', async (req: Request, res: Response) => {
+    const word = req.params.word?.trim();
+    if (!word) return res.status(400).json({ error: 'word is required' });
+    try {
+      const upstream = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+        { headers: { 'Accept': 'application/json' } },
+      );
+      const data = await upstream.json();
+      res.status(upstream.status).json(data);
+    } catch (err) {
+      console.error('Dictionary proxy error:', err);
+      res.status(502).json({ error: 'Could not reach dictionary service' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

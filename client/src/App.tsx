@@ -198,7 +198,7 @@ const Icons = {
   ),
 };
 
-type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms' | 'settings';
+type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms' | 'settings' | 'lookup';
 
 // Premium Upgrade Dialog Component
 function UpgradeDialog({ 
@@ -2082,6 +2082,24 @@ function App() {
                 <span>Import CSV</span>
               </button>
             )}
+            {/* Dictionary Lookup nav button */}
+            <button
+              onClick={() => setCurrentView('lookup')}
+              data-testid="button-view-lookup"
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-medium transition-all transform whitespace-nowrap ${
+                currentView === 'lookup'
+                  ? 'bg-white text-orange-600 shadow-xl scale-105'
+                  : 'bg-white/10 backdrop-blur-sm text-white hover:bg-white/20'
+              }`}
+              style={{
+                transform: currentView === 'lookup' ? 'translateZ(20px)' : 'translateZ(0)',
+              }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M9 4.804A7.968 7.968 0 0 0 5.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 0 1 5.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0 1 14.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0 0 14.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 1 1-2 0V4.804z"/>
+              </svg>
+              <span>Dictionary</span>
+            </button>
             <button
               onClick={() => setCurrentView('flashcards')}
               data-testid="button-view-flashcards"
@@ -2204,6 +2222,13 @@ function App() {
               onManageSubscription={handleManageSubscription}
               onViewPrivacy={() => setCurrentView('privacy')}
               onViewTerms={() => setCurrentView('terms')}
+            />
+          )}
+
+          {currentView === 'lookup' && (
+            <LookupView
+              existingWords={words}
+              onImportWords={importWords}
             />
           )}
 
@@ -2516,6 +2541,293 @@ function isHeaderRow(row: string[]): boolean {
   ).length;
   return matchCount >= 2;
 }
+
+// ── Dictionary Lookup View ────────────────────────────────────────────────────
+type LookupStatus = 'pending' | 'fetching' | 'ready' | 'not_found' | 'exists';
+interface LookupRow {
+  id: string;
+  word: string;
+  definition: string;
+  sentence: string;
+  partOfSpeech: string;
+  status: LookupStatus;
+}
+
+function LookupView({
+  existingWords,
+  onImportWords,
+}: {
+  existingWords: Word[];
+  onImportWords: (parsed: { word: string; definition: string; sentence: string }[]) => Promise<{ imported: number; skipped: number }>;
+}) {
+  const [inputText, setInputText] = useState('');
+  const [rows, setRows] = useState<LookupRow[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const existingSet = useMemo(
+    () => new Set(existingWords.map((w) => w.word.toLowerCase().trim())),
+    [existingWords],
+  );
+
+  const handleLookup = async () => {
+    const lines = inputText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    if (lines.length === 0) return;
+
+    // De-duplicate input (case-insensitive), preserve original casing
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const l of lines) {
+      const key = l.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); unique.push(l); }
+    }
+
+    const initialRows: LookupRow[] = unique.map((word, i) => ({
+      id: `${i}-${word}`,
+      word,
+      definition: '',
+      sentence: '',
+      partOfSpeech: '',
+      status: existingSet.has(word.toLowerCase()) ? 'exists' : 'pending',
+    }));
+    setRows(initialRows);
+    setIsFetching(true);
+    setProgress({ done: 0, total: unique.length });
+
+    for (let i = 0; i < initialRows.length; i++) {
+      const row = initialRows[i];
+      if (row.status === 'exists') {
+        setProgress((p) => ({ ...p, done: p.done + 1 }));
+        continue;
+      }
+      setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'fetching' } : r));
+      try {
+        const resp = await fetch(
+          `/api/dictionary/${encodeURIComponent(row.word)}`,
+        );
+        if (!resp.ok) throw new Error('not_found');
+        const data = await resp.json();
+        let definition = '';
+        let sentence = '';
+        let partOfSpeech = '';
+        if (Array.isArray(data) && data[0]?.meanings?.[0]) {
+          const meaning = data[0].meanings[0];
+          partOfSpeech = meaning.partOfSpeech || '';
+          const def0 = meaning.definitions?.[0];
+          if (def0) {
+            definition = def0.definition || '';
+            sentence = def0.example || '';
+          }
+          // If the first meaning has no example, scan others
+          if (!sentence) {
+            outer: for (const m of data[0].meanings) {
+              for (const d of m.definitions || []) {
+                if (d.example) { sentence = d.example; break outer; }
+              }
+            }
+          }
+        }
+        setRows((prev) =>
+          prev.map((r, idx) =>
+            idx === i ? { ...r, definition, sentence, partOfSpeech, status: definition ? 'ready' : 'not_found' } : r,
+          ),
+        );
+      } catch {
+        setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'not_found' } : r));
+      }
+      setProgress((p) => ({ ...p, done: p.done + 1 }));
+      if (i < initialRows.length - 1) await new Promise((res) => setTimeout(res, 120));
+    }
+    setIsFetching(false);
+  };
+
+  const handleAddToList = async () => {
+    const toAdd = rows.filter((r) => r.status === 'ready' && r.definition.trim());
+    if (toAdd.length === 0) return;
+    setIsSaving(true);
+    try {
+      const { imported, skipped } = await onImportWords(
+        toAdd.map((r) => ({ word: r.word, definition: r.definition, sentence: r.sentence })),
+      );
+      const parts: string[] = [];
+      if (imported > 0) parts.push(`${imported} word${imported !== 1 ? 's' : ''} added`);
+      if (skipped > 0) parts.push(`${skipped} skipped`);
+      toast({ title: 'Done!', description: parts.join(', ') + '.' });
+      setRows((prev) =>
+        prev.map((r) => r.status === 'ready' ? { ...r, status: 'exists' } : r),
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateRow = (id: string, field: 'definition' | 'sentence', value: string) => {
+    setRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const readyCount = rows.filter((r) => r.status === 'ready').length;
+  const notFoundCount = rows.filter((r) => r.status === 'not_found').length;
+  const existsCount = rows.filter((r) => r.status === 'exists').length;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-bold text-foreground">Dictionary Lookup</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Paste a list of words below — one per line. The app will fetch definitions and example sentences for each, then add them to your list.
+        </p>
+      </div>
+
+      {/* Input area */}
+      <div className="bg-card border border-card-border rounded-2xl p-4 space-y-3">
+        <textarea
+          data-testid="textarea-lookup-words"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          disabled={isFetching}
+          placeholder={"serendipity\nambiguous\npersevere\nepiphany"}
+          rows={6}
+          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
+        />
+        <button
+          onClick={handleLookup}
+          data-testid="button-lookup-words"
+          disabled={isFetching || inputText.trim().length === 0}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isFetching
+            ? `Looking up… ${progress.done} / ${progress.total}`
+            : 'Look up words'}
+        </button>
+
+        {/* Progress bar */}
+        {isFetching && progress.total > 0 && (
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-300"
+              style={{ width: `${(progress.done / progress.total) * 100}%` }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Summary + Add button */}
+      {rows.length > 0 && !isFetching && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground space-x-3">
+            {readyCount > 0 && (
+              <span className="text-green-600 dark:text-green-400 font-medium">{readyCount} ready</span>
+            )}
+            {existsCount > 0 && (
+              <span>{existsCount} already in list</span>
+            )}
+            {notFoundCount > 0 && (
+              <span className="text-red-500">{notFoundCount} not found</span>
+            )}
+          </div>
+          <button
+            onClick={handleAddToList}
+            data-testid="button-lookup-add-all"
+            disabled={isSaving || readyCount === 0}
+            className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Adding…' : `Add ${readyCount} to my list`}
+          </button>
+        </div>
+      )}
+
+      {/* Results list */}
+      {rows.length > 0 && (
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <div
+              key={row.id}
+              data-testid={`card-lookup-${row.id}`}
+              className={`bg-card border rounded-2xl p-4 space-y-3 ${
+                row.status === 'not_found'
+                  ? 'border-red-300 dark:border-red-800 opacity-70'
+                  : row.status === 'exists'
+                  ? 'border-border opacity-60'
+                  : 'border-card-border'
+              }`}
+            >
+              {/* Word + status badge */}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-foreground">{row.word}</span>
+                  {row.partOfSpeech && (
+                    <span className="ml-2 text-xs text-muted-foreground italic">{row.partOfSpeech}</span>
+                  )}
+                </div>
+                <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+                  row.status === 'fetching'
+                    ? 'bg-muted text-muted-foreground'
+                    : row.status === 'ready'
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+                    : row.status === 'exists'
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                }`}>
+                  {row.status === 'fetching' && 'Looking up…'}
+                  {row.status === 'ready' && 'Ready'}
+                  {row.status === 'exists' && 'Already in list'}
+                  {row.status === 'not_found' && 'Not found'}
+                </span>
+              </div>
+
+              {/* Editable definition & sentence */}
+              {(row.status === 'ready' || row.status === 'not_found') && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Definition</label>
+                    <textarea
+                      data-testid={`input-definition-${row.id}`}
+                      value={row.definition}
+                      onChange={(e) => updateRow(row.id, 'definition', e.target.value)}
+                      rows={2}
+                      placeholder="Enter definition…"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Example sentence</label>
+                    <textarea
+                      data-testid={`input-sentence-${row.id}`}
+                      value={row.sentence}
+                      onChange={(e) => updateRow(row.id, 'sentence', e.target.value)}
+                      rows={2}
+                      placeholder="Enter an example sentence… (optional)"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                  {row.status === 'not_found' && row.definition.trim() && (
+                    <button
+                      data-testid={`button-mark-ready-${row.id}`}
+                      onClick={() =>
+                        setRows((prev) =>
+                          prev.map((r) => r.id === row.id ? { ...r, status: 'ready' } : r),
+                        )
+                      }
+                      className="text-xs text-orange-600 dark:text-orange-400 font-medium"
+                    >
+                      Mark as ready to add
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// ── End LookupView ────────────────────────────────────────────────────────────
 
 function WordListView({
   words,

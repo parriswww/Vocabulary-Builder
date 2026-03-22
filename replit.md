@@ -2,7 +2,7 @@
 
 ## Overview
 
-A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. It aims to provide a native mobile app feel with a vibrant gradient UI, featuring flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, and a statistics dashboard. The project vision is to offer an engaging and effective platform for language learners to expand their vocabulary, with a focus on user experience and intuitive design. It integrates with the Datamuse API for enhanced word information and Paddle for subscription management.
+A mobile-styled vocabulary learning web application built with React, TypeScript, and Firebase. It aims to provide a native mobile app feel with a vibrant gradient UI, featuring flashcards, quizzes, daily practice streak tracking, spaced repetition (SM-2 algorithm), mastery levels, and a statistics dashboard. The project vision is to offer an engaging and effective platform for language learners to expand their vocabulary, with a focus on user experience and intuitive design. It integrates with a free Dictionary API (proxied through the backend) for automatic word definitions, the Datamuse API for synonyms/antonyms, and Paddle for subscription management. Users can also bulk-import vocabulary from CSV files.
 
 ## User Preferences
 
@@ -31,8 +31,9 @@ The application features a mobile-first design with a vertical navigation patter
 ### Third-Party Services
 
 1.  **Firebase (v11)**: Used for Authentication (anonymous sign-in, custom tokens), Firestore (real-time NoSQL database), and secure configuration via environment variables.
-2.  **Datamuse API**: Fetches synonyms and antonyms to enhance vocabulary word definitions.
-3.  **Paddle**: Integrated for subscription payments, customer portal management, and webhook processing.
+2.  **Free Dictionary API** (dictionaryapi.dev): Fetches word definitions and example sentences, proxied through the Express backend at `GET /api/dictionary/:word` to avoid browser CSP restrictions.
+3.  **Datamuse API**: Fetches synonyms and antonyms to enhance vocabulary word definitions.
+4.  **Paddle**: Integrated for subscription payments, customer portal management, and webhook processing.
 
 ### UI Component Libraries
 
