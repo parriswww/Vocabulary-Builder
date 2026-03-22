@@ -236,9 +236,9 @@ function UpgradeDialog({
         <div className="p-6">
           <div className="text-center mb-6">
             <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
-            <div className="text-4xl font-bold text-foreground">130,000 ₫</div>
-            <div className="text-muted-foreground text-sm">per month after trial</div>
-            <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
+            <div className="text-4xl font-bold text-foreground">500,000 ₫</div>
+            <div className="text-muted-foreground text-sm">every 6 months after trial</div>
+            <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
           </div>
 
           <ul className="space-y-3 mb-6">
@@ -1236,8 +1236,8 @@ function App() {
             <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">
               <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
                 <div>
-                  <div className="text-2xl font-extrabold text-foreground">130.000 ₫<span className="text-base font-normal text-muted-foreground">/month</span></div>
-                  <div className="text-xs text-muted-foreground mt-0.5">$4.95 USD/month · billed monthly</div>
+                  <div className="text-2xl font-extrabold text-foreground">500,000 ₫<span className="text-base font-normal text-muted-foreground"> / 6 months</span></div>
+                  <div className="text-xs text-muted-foreground mt-0.5">$19 USD · billed every 6 months</div>
                 </div>
                 <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-500/20">
                   7-day FREE trial
@@ -1559,15 +1559,15 @@ function App() {
                 <Icons.Crown />
               </div>
               <h2 className="text-2xl font-bold mb-1">Get Full Access</h2>
-              <p className="text-white/80 text-sm">7-day free trial, then 130,000 ₫/month</p>
+              <p className="text-white/80 text-sm">7-day free trial, then 500,000 ₫ every 6 months</p>
             </div>
 
             <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
               <div className="text-center mb-6">
                 <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
-                <div className="text-5xl font-bold text-foreground">130,000 ₫</div>
-                <div className="text-muted-foreground mt-1 text-sm">per month after trial</div>
-                <div className="text-muted-foreground/70 text-xs">($4.95 USD/month)</div>
+                <div className="text-5xl font-bold text-foreground">500,000 ₫</div>
+                <div className="text-muted-foreground mt-1 text-sm">every 6 months after trial</div>
+                <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
               </div>
 
               <ul className="space-y-3 mb-6">
@@ -1598,7 +1598,7 @@ function App() {
               </button>
 
               <p className="text-xs text-muted-foreground text-center mt-3">
-                No credit card required during trial. After 7 days: $4.95 USD/month. Cancel anytime.
+                No credit card required during trial. After 7 days: $19 USD every 6 months. Cancel anytime.
               </p>
             </div>
 

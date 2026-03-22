@@ -30,7 +30,7 @@ We use cookies to enhance your experience (e.g., keeping you logged in). You can
 We use the collected data to:
 
 - Create and manage your user account.
-- Process monthly subscription payments via Paddle.
+- Process subscription payments via Paddle.
 - Improve website performance and fix technical issues.
 - Analyze user trends to improve our educational content.
 
@@ -112,10 +112,10 @@ By using Vocabulary Builder, you agree to these Terms. If you do not agree, plea
 
 ## 2. Description of Service
 
-Vocabulary Builder is an educational web application that helps users learn and memorize vocabulary through flashcards, quizzes, and spaced repetition techniques. Access to the full service requires an active monthly subscription.
+Vocabulary Builder is an educational web application that helps users learn and memorize vocabulary through flashcards, quizzes, and spaced repetition techniques. Access to the full service requires an active subscription.
 
 - **Free Trial:** New accounts receive a 7-day free trial with full access to all features. No payment is required during the trial period.
-- **Subscription:** Full access to all learning features for 130.000 ₫/tháng ($4.95 USD/month), billed monthly via Paddle after the trial ends.
+- **Subscription:** Full access to all learning features for 500,000 ₫ every 6 months ($19 USD), billed every 6 months via Paddle after the trial ends.
 
 ## 3. User Accounts
 
@@ -135,7 +135,7 @@ Vocabulary Builder is an educational web application that helps users learn and 
 
 ### Payment
 - Subscriptions are processed through Paddle.com, our Merchant of Record.
-- The subscription fee is 130.000 ₫/tháng ($4.95 USD/month), billed monthly.
+- The subscription fee is 500,000 ₫ ($19 USD), billed every 6 months.
 - All payments are charged in USD regardless of the displayed VND price. The VND price is an approximate equivalent and may vary with exchange rates.
 - We do not store your payment card details.
 
