@@ -28,6 +28,7 @@ import {
 import type { Word, InsertWord, UserMetadata, Subscription } from '@shared/schema';
 import { privacyPolicyContent, termsOfServiceContent, refundPolicyContent } from './legal/privacy-policy';
 import { toast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
 
 // Paddle types
 declare global {
@@ -3706,6 +3707,8 @@ function LegalView({
           </a>
         </p>
       </div>
+      {/* Toast host — required for toast() calls to render */}
+      <Toaster />
     </div>
   );
 }
