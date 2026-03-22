@@ -2558,7 +2558,7 @@ function WordListView({
           </button>
         </div>
         <p className="text-xs text-muted-foreground/70 -mt-1">
-          CSV format: word, definition, sentence (one per row)
+          CSV format: word, definition, sentence — header row optional
         </p>
 
         <div className="relative">
