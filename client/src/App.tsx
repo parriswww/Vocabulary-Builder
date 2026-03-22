@@ -2145,6 +2145,8 @@ function App() {
           </footer>
         </div>
       </main>
+      {/* Toast host — must be in App's root div so toasts render on all views */}
+      <Toaster />
     </div>
   );
 }
@@ -3707,8 +3709,6 @@ function LegalView({
           </a>
         </p>
       </div>
-      {/* Toast host — required for toast() calls to render */}
-      <Toaster />
     </div>
   );
 }
