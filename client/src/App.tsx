@@ -2486,7 +2486,7 @@ function WordListView({
               </div>
               {importPreview.duplicates > 0 && (
                 <div className="flex items-center justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Already in your list (skipped)</span>
+                  <span className="text-muted-foreground">Duplicate words (skipped)</span>
                   <span className="font-semibold text-amber-600 dark:text-amber-400">{importPreview.duplicates}</span>
                 </div>
               )}
