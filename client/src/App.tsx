@@ -2321,6 +2321,7 @@ function App() {
                   selected={csvImportTags}
                   existingTags={allTags}
                   onChange={setCsvImportTags}
+                  testId="input-tag-csv-import"
                 />
               </div>
             )}
@@ -2566,12 +2567,12 @@ function InlineTagPicker({
   selected,
   existingTags,
   onChange,
-  compact = false,
+  testId = 'input-new-tag',
 }: {
   selected: string[];
   existingTags: string[];
   onChange: (tags: string[]) => void;
-  compact?: boolean;
+  testId?: string;
 }) {
   const [inputVal, setInputVal] = useState('');
 
@@ -2604,7 +2605,7 @@ function InlineTagPicker({
   const allPills = Array.from(new Set([...existingTags, ...selected]));
 
   return (
-    <div className={`space-y-2 ${compact ? '' : ''}`}>
+    <div className="space-y-2">
       {allPills.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {allPills.map((tag) => {
@@ -2638,7 +2639,7 @@ function InlineTagPicker({
           onKeyDown={handleInputKeyDown}
           onBlur={addTag}
           placeholder={allPills.length === 0 ? 'Type a tag and press Enter…' : 'New tag…'}
-          data-testid="input-new-tag"
+          data-testid={testId}
           className="flex-1 min-w-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-orange-500"
         />
       </div>
@@ -2944,7 +2945,7 @@ function LookupView({
                       selected={row.tags}
                       existingTags={allTags}
                       onChange={(tags) => updateRowTags(row.id, tags)}
-                      compact
+                      testId={`input-tag-${row.id}`}
                     />
                   </div>
                 </div>
