@@ -233,9 +233,9 @@ function PaymentSection({
       <div className="border border-border rounded-xl p-5 bg-muted/30">
         <div className="flex items-center gap-2 mb-1">
           <Icons.QrCode />
-          <p className="text-sm font-semibold text-foreground">Pay via VietQR (Techcombank)</p>
+          <p className="text-xl font-semibold text-foreground">Pay via VietQR (Techcombank)</p>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-base text-muted-foreground mb-4">
           Only users with a <strong className="text-foreground">Vietnamese bank account</strong> are eligible for this option.
         </p>
 
@@ -295,7 +295,7 @@ function PaymentSection({
       </div>
 
       {/* Divider */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-3 text-base text-muted-foreground">
         <div className="flex-1 h-px bg-border" />
         <span>or pay with card / e-wallet</span>
         <div className="flex-1 h-px bg-border" />
