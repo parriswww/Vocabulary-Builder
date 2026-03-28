@@ -12,6 +12,15 @@ export default function AdminPanel() {
   const [extendDays, setExtendDays] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.style.opacity = '0';
+      splash.style.transition = 'opacity 0.3s ease-out';
+      setTimeout(() => splash.remove(), 300);
+    }
+  }, []);
+
+  useEffect(() => {
     if (token) fetchSubscribers();
   }, [token]);
 
