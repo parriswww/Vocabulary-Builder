@@ -1,0 +1,87 @@
+import { useState } from "react";
+import { QrCode, Loader2 } from "lucide-react";
+// Replace these with your own values
+const QR_IMAGE_SRC = "/your-qr-code.jpg";        // put your QR image in /public
+const PRICE = "500,000 VND";
+function isValidEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+interface PaymentSectionProps {
+  onPaddleCheckout: () => Promise<void>;
+  checkoutLoading?: boolean;
+}
+export function PaymentSection({ onPaddleCheckout, checkoutLoading }: PaymentSectionProps) {
+  const [qrEmail, setQrEmail] = useState("");
+  const [touched, setTouched] = useState(false);
+  const emailValid = isValidEmail(qrEmail);
+  return (
+    <div className="space-y-4">
+      {/* ── VietQR / Techcombank ── */}
+      <div className="border rounded-xl p-5 bg-gray-50">
+        <div className="flex items-center gap-2 mb-1">
+          <QrCode className="w-4 h-4 text-primary shrink-0" />
+          <p className="text-sm font-semibold">Pay via VietQR (Techcombank)</p>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Only subscribers with a <strong className="text-gray-700">Vietnamese bank account</strong> are
+          eligible to use this option.
+        </p>
+        {/* Email field */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1">
+            Your email address <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            value={qrEmail}
+            onChange={(e) => setQrEmail(e.target.value)}
+            onBlur={() => setTouched(true)}
+            placeholder="you@example.com"
+            className={`w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors ${
+              touched && !emailValid
+                ? "border-red-400 focus:border-red-500"
+                : "border-gray-300 focus:border-primary"
+            }`}
+          />
+          {touched && !emailValid && (
+            <p className="text-xs text-red-500 mt-1">Please enter a valid email address.</p>
+          )}
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            <strong className="text-gray-700">Important:</strong> include this email in the bank
+            transfer description so we can activate your account.
+          </p>
+        </div>
+        {/* QR code — hidden until email is valid */}
+        {emailValid ? (
+          <div className="text-center">
+            <img
+              src={QR_IMAGE_SRC}
+              alt="VietQR payment code"
+              className="w-48 mx-auto rounded-xl shadow-md"
+            />
+            <p className="text-xs text-gray-500 mt-3">
+              Scan with any Vietnamese banking app · {PRICE}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-xs gap-2">
+            <QrCode className="w-8 h-8 opacity-30" />
+            <span>Enter your email above to reveal the QR code</span>
+          </div>
+        )}
+      </div>
+      {/* ── Paddle checkout ── */}
+      <button
+        onClick={onPaddleCheckout}
+        disabled={checkoutLoading}
+        className="w-full py-4 px-6 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-lg transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+      >
+        {checkoutLoading && <Loader2 className="w-5 h-5 animate-spin" />}
+        All others — click here to proceed to checkout
+      </button>
+      <p className="text-xs text-gray-500 text-center">
+        Google Pay · Apple Pay · PayPal · Credit Card · Debit Card
+      </p>
+    </div>
+  );
+}

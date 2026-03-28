@@ -196,9 +196,129 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
     </svg>
   ),
+  QrCode: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2zM9 9h2v2H9zM9 3h1v1H9zM13 3h1v1h-1z" />
+    </svg>
+  ),
+  SpinnerSm: () => (
+    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  ),
 };
 
 type View = 'list' | 'add' | 'flashcards' | 'quiz' | 'stats' | 'privacy' | 'terms' | 'settings' | 'lookup';
+
+// ── VietQR + Paddle Payment Section ──────────────────────────────────────────
+function isValidEmailAddress(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function PaymentSection({
+  onPaddleCheckout,
+  checkoutLoading,
+}: {
+  onPaddleCheckout: () => void;
+  checkoutLoading?: boolean;
+}) {
+  const [qrEmail, setQrEmail] = useState('');
+  const [touched, setTouched] = useState(false);
+  const emailValid = isValidEmailAddress(qrEmail);
+
+  return (
+    <div className="space-y-4">
+      {/* VietQR / Techcombank */}
+      <div className="border border-border rounded-xl p-5 bg-muted/30">
+        <div className="flex items-center gap-2 mb-1">
+          <Icons.QrCode />
+          <p className="text-sm font-semibold text-foreground">Pay via VietQR (Techcombank)</p>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Only users with a <strong className="text-foreground">Vietnamese bank account</strong> are eligible for this option.
+        </p>
+
+        {/* Email field */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-foreground mb-1">
+            Your email address <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            value={qrEmail}
+            onChange={(e) => setQrEmail(e.target.value)}
+            onBlur={() => setTouched(true)}
+            placeholder="you@example.com"
+            data-testid="input-vietqr-email"
+            className={`w-full px-3 py-2 rounded-lg border text-sm text-foreground bg-background outline-none transition-colors ${
+              touched && !emailValid
+                ? 'border-red-400 focus:border-red-500'
+                : 'border-border focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
+            }`}
+          />
+          {touched && !emailValid && (
+            <p className="text-xs text-red-500 mt-1">Please enter a valid email address.</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+            <strong className="text-foreground">Important:</strong> include this email in the bank transfer description so we can activate your account.
+          </p>
+        </div>
+
+        {/* QR code — revealed only after valid email */}
+        {emailValid ? (
+          <div className="text-center">
+            <img
+              src="/tcbqr.jpg"
+              alt="VietQR Techcombank payment code"
+              data-testid="img-vietqr"
+              className="w-52 mx-auto rounded-xl shadow-md"
+            />
+            <p className="text-xs text-muted-foreground mt-3">
+              Scan with any Vietnamese banking app · 500,000 ₫
+            </p>
+          </div>
+        ) : (
+          <div
+            data-testid="placeholder-vietqr"
+            className="flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-border text-muted-foreground text-xs gap-2"
+          >
+            <svg className="w-10 h-10 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <rect x="3" y="3" width="7" height="7" rx="1" strokeWidth="2" />
+              <rect x="14" y="3" width="7" height="7" rx="1" strokeWidth="2" />
+              <rect x="3" y="14" width="7" height="7" rx="1" strokeWidth="2" />
+              <path strokeLinecap="round" strokeWidth="2" d="M14 14h2v2h-2zM18 14h3v2h-3zM14 18h2v3h-2zM18 18h3v3h-3z" />
+            </svg>
+            <span>Enter your email above to reveal the QR code</span>
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex-1 h-px bg-border" />
+        <span>or pay with card / e-wallet</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      {/* Paddle checkout */}
+      <button
+        onClick={onPaddleCheckout}
+        disabled={checkoutLoading}
+        data-testid="button-get-access"
+        className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {checkoutLoading && <Icons.SpinnerSm />}
+        {checkoutLoading ? 'Loading…' : 'Start your 7-day free trial'}
+      </button>
+
+      <p className="text-xs text-muted-foreground text-center">
+        Google Pay · Apple Pay · PayPal · Credit / Debit Card
+      </p>
+    </div>
+  );
+}
+// ── End PaymentSection ────────────────────────────────────────────────────────
 
 // Premium Upgrade Dialog Component
 function UpgradeDialog({ 
@@ -221,7 +341,7 @@ function UpgradeDialog({
       data-testid="dialog-upgrade-overlay"
     >
       <div 
-        className="bg-card border border-card-border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+        className="bg-card border border-card-border rounded-2xl max-w-md w-full overflow-y-auto max-h-[90vh] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         data-testid="dialog-upgrade"
       >
@@ -261,14 +381,10 @@ function UpgradeDialog({
             ))}
           </ul>
 
-          <button
-            onClick={onUpgrade}
-            disabled={!isReady}
-            data-testid="button-upgrade-confirm"
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isReady ? 'Start your 7-day free trial' : 'Loading...'}
-          </button>
+          <PaymentSection
+            onPaddleCheckout={onUpgrade}
+            checkoutLoading={!isReady}
+          />
 
           <button
             onClick={onClose}
@@ -1712,17 +1828,13 @@ function App() {
                 ))}
               </ul>
 
-              <button
-                onClick={handleUpgrade}
-                disabled={!paddleInitialized}
-                data-testid="button-get-access"
-                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {paddleInitialized ? 'Start your 7-day free trial' : 'Loading...'}
-              </button>
+              <PaymentSection
+                onPaddleCheckout={handleUpgrade}
+                checkoutLoading={!paddleInitialized}
+              />
 
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                No credit card required during trial. After 7 days: $19 USD every 6 months. Cancel anytime.
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                No credit card required during trial · Cancel anytime
               </p>
             </div>
 
