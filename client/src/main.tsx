@@ -14,5 +14,12 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-const isAdminRoute = window.location.pathname === '/admin' || window.location.pathname === '/admin/';
+// Support both /admin path AND ?admin=true query param
+// The query param survives CDN/proxy redirects that may strip the path
+const params = new URLSearchParams(window.location.search);
+const isAdminRoute =
+  window.location.pathname === '/admin' ||
+  window.location.pathname === '/admin/' ||
+  params.get('admin') === 'true';
+
 createRoot(document.getElementById("root")!).render(isAdminRoute ? <AdminPanel /> : <App />);
