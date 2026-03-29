@@ -361,6 +361,8 @@ function UpgradeDialog({
             <div className="text-4xl font-bold text-foreground">500,000 ₫</div>
             <div className="text-muted-foreground text-sm">every 6 months after trial</div>
             <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
+            <div className="mt-3 text-base font-bold text-foreground">+10% VAT for purchases in Vietnam</div>
+            <div className="text-base font-bold">Total: <span className="text-red-500">550,000 ₫</span></div>
           </div>
 
           <ul className="space-y-3 mb-6">
@@ -1478,6 +1480,7 @@ function App() {
                 <div>
                   <div className="text-2xl font-extrabold text-foreground">500,000 ₫<span className="text-base font-normal text-muted-foreground"> / 6 months</span></div>
                   <div className="text-xs text-muted-foreground mt-0.5">$19 USD · billed every 6 months</div>
+                  <div className="text-xs font-bold text-foreground mt-1">+10% VAT in Vietnam · Total: <span className="text-red-500">550,000 ₫</span></div>
                 </div>
                 <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-500/20">
                   7-day FREE trial
@@ -1808,6 +1811,8 @@ function App() {
                 <div className="text-5xl font-bold text-foreground">500,000 ₫</div>
                 <div className="text-muted-foreground mt-1 text-sm">every 6 months after trial</div>
                 <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
+                <div className="mt-3 text-base font-bold text-foreground">+10% VAT for purchases in Vietnam</div>
+                <div className="text-base font-bold">Total: <span className="text-red-500">550,000 ₫</span></div>
               </div>
 
               <ul className="space-y-3 mb-6">
