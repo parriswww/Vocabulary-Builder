@@ -2343,6 +2343,9 @@ function App() {
               onManageSubscription={handleManageSubscription}
               onViewPrivacy={() => setCurrentView('privacy')}
               onViewTerms={() => setCurrentView('terms')}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+              onLogout={handleLogout}
             />
           )}
 
@@ -2482,6 +2485,9 @@ function SettingsView({
   onManageSubscription,
   onViewPrivacy,
   onViewTerms,
+  isDarkMode,
+  onToggleDarkMode,
+  onLogout,
 }: {
   user: any;
   subscription: Subscription;
@@ -2493,6 +2499,9 @@ function SettingsView({
   onManageSubscription: () => void;
   onViewPrivacy: () => void;
   onViewTerms: () => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
+  onLogout: () => void;
 }) {
   const getStatusLabel = () => {
     if (subscription.isPremium) return { label: 'Premium', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10' };
@@ -2607,6 +2616,22 @@ function SettingsView({
         </div>
       </div>
 
+      {/* Appearance Section */}
+      <div className="bg-card border border-card-border rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Appearance</h3>
+        <button
+          onClick={onToggleDarkMode}
+          data-testid="button-settings-dark-mode"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-secondary/20 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3">
+            {isDarkMode ? <Icons.Sun /> : <Icons.Moon />}
+            <span className="text-sm text-foreground">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{isDarkMode ? 'Currently dark' : 'Currently light'}</span>
+        </button>
+      </div>
+
       {/* Contact Section */}
       <div className="bg-card border border-card-border rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">Support</h3>
@@ -2621,6 +2646,16 @@ function SettingsView({
           </a>
         </div>
       </div>
+
+      {/* Sign Out */}
+      <button
+        onClick={onLogout}
+        data-testid="button-settings-logout"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-red-500/30 text-red-500 dark:text-red-400 font-semibold text-sm hover:bg-red-500/10 transition-colors"
+      >
+        <Icons.Logout />
+        Sign Out
+      </button>
     </div>
   );
 }
