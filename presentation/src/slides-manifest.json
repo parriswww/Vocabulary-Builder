@@ -1,0 +1,25 @@
+{
+  "slides": [
+    { "id": "slide01", "position": 1, "filepath": "slides/Slide01_Cover",              "title": "Cover",                       "module": "Core" },
+    { "id": "slide02", "position": 2, "filepath": "slides/Slide02_Problem",             "title": "The Problem",                  "module": "Core" },
+    { "id": "slide03", "position": 3, "filepath": "slides/Slide03_Solution",            "title": "The Solution",                 "module": "Core" },
+    { "id": "slide04", "position": 4, "filepath": "slides/Slide04_Personalization",     "title": "Feature: Your Words",          "module": "Core" },
+    { "id": "slide05", "position": 5, "filepath": "slides/Slide05_Context",             "title": "Feature: Words in Context",    "module": "Core" },
+    { "id": "slide06", "position": 6, "filepath": "slides/Slide06_SpacedRepetition",    "title": "Feature: Spaced Repetition",   "module": "Core" },
+    { "id": "slide07", "position": 7, "filepath": "slides/Slide07_Progress",            "title": "Feature: Progress Tracking",   "module": "Core" },
+    { "id": "slide08", "position": 8, "filepath": "slides/Slide08_AnyDevice",           "title": "Feature: Any Device",          "module": "Core" },
+    { "id": "slide09", "position": 9, "filepath": "slides/Slide09_SocialProof",         "title": "Results & Social Proof",       "module": "Core" },
+    { "id": "slide10", "position": 10,"filepath": "slides/Slide10_Pricing",             "title": "Pricing",                      "module": "Core" },
+    { "id": "slide11", "position": 11,"filepath": "slides/Slide11_GettingStarted",      "title": "Getting Started",              "module": "Core" },
+    { "id": "slide12", "position": 12,"filepath": "slides/Slide12_CoreCTA",             "title": "Call to Action",               "module": "Core" },
+    { "id": "slide13", "position": 13,"filepath": "slides/Slide13_BusinessPain",        "title": "Business: The Challenge",      "module": "Business" },
+    { "id": "slide14", "position": 14,"filepath": "slides/Slide14_BusinessSolution",    "title": "Business: Your Team",          "module": "Business" },
+    { "id": "slide15", "position": 15,"filepath": "slides/Slide15_BusinessAnecdote",    "title": "Business: Minh's Story",       "module": "Business" },
+    { "id": "slide16", "position": 16,"filepath": "slides/Slide16_StudentPain",         "title": "Students: The Challenge",      "module": "Students" },
+    { "id": "slide17", "position": 17,"filepath": "slides/Slide17_StudentSolution",     "title": "Students: Exam Prep",          "module": "Students" },
+    { "id": "slide18", "position": 18,"filepath": "slides/Slide18_StudentAnecdote",     "title": "Students: Linh's Story",       "module": "Students" },
+    { "id": "slide19", "position": 19,"filepath": "slides/Slide19_IndividualAspiration","title": "Individuals: Aspiration",      "module": "Individuals" },
+    { "id": "slide20", "position": 20,"filepath": "slides/Slide20_IndividualFit",       "title": "Individuals: Fits Your Life",  "module": "Individuals" },
+    { "id": "slide21", "position": 21,"filepath": "slides/Slide21_IndividualAnecdote",  "title": "Individuals: Hoa's Story",     "module": "Individuals" }
+  ]
+}
