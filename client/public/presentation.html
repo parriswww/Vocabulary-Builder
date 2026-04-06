@@ -394,6 +394,25 @@
     }
 
     /* ── Image placeholder ──────────────────────────────── */
+    /* ── Image frame (img + auto-fallback placeholder) ─── */
+    .img-frame {
+      position: relative;
+      display: flex;
+    }
+    .img-frame > img.screen-img {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .img-frame > .img-placeholder {
+      flex: 1;
+      width: 100% !important;
+      min-height: unset !important;
+    }
+
     .img-placeholder {
       width: 100%;
       height: 100%;
@@ -719,10 +738,13 @@
     <p class="cover-tagline-vi">Cá nhân hóa · Có cơ sở khoa học · Truy cập mọi nơi</p>
   </div>
   <div class="cover-right">
-    <div class="img-placeholder" style="width:340px; height:460px; border-radius:20px;">
-      <div class="ph-icon">&#128247;</div>
-      <div class="ph-label">slide-wordlist.png</div>
-      <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+    <div class="img-frame" style="width:340px; height:460px; border-radius:20px; overflow:hidden;">
+      <img src="slide-wordlist.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="img-placeholder" style="display:none;">
+        <div class="ph-icon">&#128247;</div>
+        <div class="ph-label">slide-wordlist.png</div>
+        <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+      </div>
     </div>
   </div>
   <div class="slide-footer">
@@ -789,10 +811,13 @@
       <p class="vi-body">Vocabulary Builder bắt đầu hoàn toàn trống. Bạn thêm những từ quan trọng với bạn — từ công việc, học tập, bài tập của con bạn. Ứng dụng sẽ làm phần còn lại.</p>
     </div>
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-addword.png</div>
-        <div class="ph-hint">Screenshot: adding a word with auto-definition loaded</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-addword.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-addword.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
   </div>
@@ -807,10 +832,13 @@
   <div class="slide-accent-bar"></div>
   <div class="slide-body two-col">
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-wordlist.png</div>
-        <div class="ph-hint">Screenshot: personalized word list view</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-wordlist.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-wordlist.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
     <div class="col">
@@ -850,10 +878,13 @@
       </ul>
     </div>
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-flashcard.png</div>
-        <div class="ph-hint">Screenshot: flashcard showing word + sentence context</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-flashcard.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-flashcard.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
   </div>
@@ -868,10 +899,13 @@
   <div class="slide-accent-bar"></div>
   <div class="slide-body two-col">
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-quiz.png</div>
-        <div class="ph-hint">Screenshot: quiz view with answer choices</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-quiz.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-quiz.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
     <div class="col">
@@ -909,10 +943,13 @@
       </ul>
     </div>
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-stats.png</div>
-        <div class="ph-hint">Screenshot: statistics/progress dashboard with streak</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-stats.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-stats.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1070,11 +1107,14 @@
         <div class="step-vi">Xem vốn từ vựng của bạn phát triển</div>
       </div>
     </div>
-    <div class="img-placeholder" style="width:700px; height:140px; margin:24px auto 0; flex-direction:row; gap:16px;">
-      <div class="ph-icon">&#128247;</div>
-      <div>
-        <div class="ph-label">slide-pricing.png</div>
-        <div class="ph-hint">Screenshot: pricing/subscription screen showing 7-day trial and 500k VND</div>
+    <div class="img-frame" style="width:700px; height:140px; margin:24px auto 0;">
+      <img src="slide-pricing.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="img-placeholder" style="display:none; flex-direction:row; gap:16px;">
+        <div class="ph-icon">&#128247;</div>
+        <div>
+          <div class="ph-label">slide-pricing.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1117,25 +1157,13 @@
      MODULE A — BUSINESS  ·  Slides 13–15
      ════════════════════════════════════════════════════════ -->
 
-<!-- ── MODULE A DIVIDER ───────────────────────────────────── -->
-<div class="slide module-divider" id="s13-div">
-  <div class="cover-content" style="position:relative; z-index:1;">
-    <div class="module-icon">&#128188;</div>
-    <div style="display:inline-block; background:rgba(0,0,0,0.2); color:#fff; font-size:11px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; padding:5px 16px; border-radius:4px; margin-bottom:16px;">Module A · For Businesses</div>
-    <h1>For<br>Businesses</h1>
-    <div class="mod-sub">Helping your team communicate with confidence</div>
-    <div class="mod-vi">Giúp đội ngũ của bạn giao tiếp tự tin</div>
-    <p style="font-size:14px; color:rgba(255,255,255,0.5); margin-top:20px; font-style:italic;">Slides 13–15 · Use with Core Slides 1–12</p>
-  </div>
-  <div class="slide-footer" style="background:rgba(0,0,0,0.15); border-color:rgba(255,255,255,0.15);">
-    <span style="color:rgba(255,255,255,0.6); font-weight:600;">vocabulary-builder.net</span>
-    <span style="color:rgba(255,255,255,0.5);">Module A / Business</span>
-  </div>
-</div>
-
 <!-- ── SLIDE 13: Business — The Cost of Poor English ──────── -->
 <div class="slide" id="s13">
-  <div class="slide-accent-bar"></div>
+  <div style="background:linear-gradient(90deg,var(--orange-dk),var(--orange)); padding:6px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+    <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff;">&#128188; MODULE A — FOR BUSINESSES · Dành cho Doanh nghiệp</span>
+    <span style="font-size:11px; color:rgba(255,255,255,0.65); font-style:italic;">Slides 13–15 · Use with Core Slides 1–12</span>
+  </div>
+  <div class="slide-accent-bar" style="height:3px;"></div>
   <div class="slide-body two-col">
     <div class="col">
       <div class="section-label">Business · Doanh nghiệp</div>
@@ -1184,10 +1212,13 @@
   <div class="slide-accent-bar"></div>
   <div class="slide-body two-col">
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-tags.png</div>
-        <div class="ph-hint">Screenshot: tag/category view showing separate vocabulary lists</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-tags.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-tags.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
     <div class="col">
@@ -1256,25 +1287,13 @@
      MODULE B — STUDENTS  ·  Slides 16–18
      ════════════════════════════════════════════════════════ -->
 
-<!-- ── MODULE B DIVIDER ───────────────────────────────────── -->
-<div class="slide module-divider" style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #06b6d4 100%);" id="s16-div">
-  <div class="cover-content" style="position:relative; z-index:1;">
-    <div class="module-icon">&#127891;</div>
-    <div style="display:inline-block; background:rgba(0,0,0,0.2); color:#fff; font-size:11px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; padding:5px 16px; border-radius:4px; margin-bottom:16px;">Module B · For Students</div>
-    <h1>For<br>Students</h1>
-    <div class="mod-sub">From Cambridge to IELTS — vocabulary that earns scores</div>
-    <div class="mod-vi">Từ Cambridge đến IELTS — từ vựng giúp đạt điểm cao</div>
-    <p style="font-size:14px; color:rgba(255,255,255,0.5); margin-top:20px; font-style:italic;">Slides 16–18 · Use with Core Slides 1–12</p>
-  </div>
-  <div class="slide-footer" style="background:rgba(0,0,0,0.15); border-color:rgba(255,255,255,0.15);">
-    <span style="color:rgba(255,255,255,0.6); font-weight:600;">vocabulary-builder.net</span>
-    <span style="color:rgba(255,255,255,0.5);">Module B / Students</span>
-  </div>
-</div>
-
 <!-- ── SLIDE 16: Students — English = Future ─────────────── -->
 <div class="slide" id="s16">
-  <div class="slide-accent-bar" style="background:linear-gradient(90deg,#1e40af,#2563eb,#06b6d4);"></div>
+  <div style="background:linear-gradient(90deg,#1e40af,#2563eb,#0891b2); padding:6px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+    <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff;">&#127891; MODULE B — FOR STUDENTS · Dành cho Học sinh / Sinh viên</span>
+    <span style="font-size:11px; color:rgba(255,255,255,0.65); font-style:italic;">Slides 16–18 · Use with Core Slides 1–12</span>
+  </div>
+  <div class="slide-accent-bar" style="background:linear-gradient(90deg,#1e40af,#2563eb,#06b6d4); height:3px;"></div>
   <div class="slide-body two-col">
     <div class="col">
       <div class="section-label" style="background:#2563eb;">Students · Học sinh / Sinh viên</div>
@@ -1323,10 +1342,13 @@
   <div class="slide-accent-bar" style="background:linear-gradient(90deg,#1e40af,#2563eb,#06b6d4);"></div>
   <div class="slide-body two-col">
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-flashcard.png</div>
-        <div class="ph-hint">Screenshot: flashcard or quiz view for exam vocab</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-flashcard.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-flashcard.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
     <div class="col">
@@ -1395,25 +1417,13 @@
      MODULE C — INDIVIDUALS  ·  Slides 19–21
      ════════════════════════════════════════════════════════ -->
 
-<!-- ── MODULE C DIVIDER ───────────────────────────────────── -->
-<div class="slide module-divider" style="background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #34d399 100%);" id="s19-div">
-  <div class="cover-content" style="position:relative; z-index:1;">
-    <div class="module-icon">&#127775;</div>
-    <div style="display:inline-block; background:rgba(0,0,0,0.2); color:#fff; font-size:11px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; padding:5px 16px; border-radius:4px; margin-bottom:16px;">Module C · For Individuals</div>
-    <h1>For<br>Individuals</h1>
-    <div class="mod-sub">Your goals. Your pace. Your vocabulary.</div>
-    <div class="mod-vi">Mục tiêu của bạn. Tốc độ của bạn. Từ vựng của bạn.</div>
-    <p style="font-size:14px; color:rgba(255,255,255,0.5); margin-top:20px; font-style:italic;">Slides 19–21 · Use with Core Slides 1–12</p>
-  </div>
-  <div class="slide-footer" style="background:rgba(0,0,0,0.15); border-color:rgba(255,255,255,0.15);">
-    <span style="color:rgba(255,255,255,0.6); font-weight:600;">vocabulary-builder.net</span>
-    <span style="color:rgba(255,255,255,0.5);">Module C / Individuals</span>
-  </div>
-</div>
-
 <!-- ── SLIDE 19: Individuals — Aspiration ────────────────── -->
 <div class="slide" id="s19">
-  <div class="slide-accent-bar" style="background:linear-gradient(90deg,#064e3b,#059669,#34d399);"></div>
+  <div style="background:linear-gradient(90deg,#064e3b,#059669,#10b981); padding:6px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+    <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#fff;">&#127775; MODULE C — FOR INDIVIDUALS · Dành cho Cá nhân</span>
+    <span style="font-size:11px; color:rgba(255,255,255,0.65); font-style:italic;">Slides 19–21 · Use with Core Slides 1–12</span>
+  </div>
+  <div class="slide-accent-bar" style="background:linear-gradient(90deg,#064e3b,#059669,#34d399); height:3px;"></div>
   <div class="slide-body two-col">
     <div class="col">
       <div class="section-label" style="background:#059669;">Individuals · Cá nhân</div>
@@ -1453,10 +1463,13 @@
   <div class="slide-accent-bar" style="background:linear-gradient(90deg,#064e3b,#059669,#34d399);"></div>
   <div class="slide-body two-col">
     <div class="col img-col">
-      <div class="img-placeholder" style="width:380px; height:480px;">
-        <div class="ph-icon">&#128247;</div>
-        <div class="ph-label">slide-stats.png</div>
-        <div class="ph-hint">Screenshot: progress stats and streak dashboard</div>
+      <div class="img-frame" style="width:380px; height:480px;">
+        <img src="slide-stats.png" class="screen-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="img-placeholder" style="display:none;">
+          <div class="ph-icon">&#128247;</div>
+          <div class="ph-label">slide-stats.png</div>
+          <div class="ph-hint">Drop screenshot into client/public/ with this exact filename</div>
+        </div>
       </div>
     </div>
     <div class="col">
