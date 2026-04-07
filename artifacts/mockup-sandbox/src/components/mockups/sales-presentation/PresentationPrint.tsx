@@ -26,8 +26,11 @@ export function PresentationPrint() {
 
   // beforeprint: force every slide to exact pixel dimensions so Chrome
   // renders them at 1280×720 regardless of paper size.
+  // Also clear the title so Chrome embeds NO title metadata in the PDF —
+  // this lets the PDF viewer show the user's chosen filename instead.
   useEffect(() => {
     const before = () => {
+      document.title = '';
       const blocks = document.querySelectorAll<HTMLElement>('.print-slide-block');
       blocks.forEach(b => {
         b.style.setProperty('width',  `${SLIDE_W}px`, 'important');
@@ -49,6 +52,8 @@ export function PresentationPrint() {
     };
 
     const after = () => {
+      // Restore the title for the browser tab / next print session
+      document.title = 'ACE-Apps — Vocabulary Builder Sales Presentation';
       // React re-renders from state, so just clear any forced inline styles
       document.querySelectorAll<HTMLElement>('.print-slide-block, .print-slide-inner')
         .forEach(el => el.removeAttribute('style'));
