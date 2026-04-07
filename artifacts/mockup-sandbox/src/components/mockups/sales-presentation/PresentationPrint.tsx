@@ -8,6 +8,12 @@ const SLIDE_H = 720;
 export function PresentationPrint() {
   const [screenScale, setScreenScale] = useState(1);
 
+  // Set page title so Chrome uses it as the default PDF filename
+  useEffect(() => {
+    document.title = 'ACE-Apps — Vocabulary Builder Sales Presentation';
+    return () => { document.title = 'Mockup Canvas'; };
+  }, []);
+
   // Screen scale: fit slides to viewport width
   useEffect(() => {
     const update = () => {
