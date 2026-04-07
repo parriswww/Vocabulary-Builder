@@ -1,18 +1,15 @@
 import './_group.css';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SLIDES, SLIDE_TITLES } from './Presentation';
 
 const SLIDE_W = 1280;
 const SLIDE_H = 720;
+const DEFAULT_FILENAME = 'Vocabulary Builder — Sales Presentation';
 
 export function PresentationPrint() {
   const [screenScale, setScreenScale] = useState(1);
-
-  // Set page title so Chrome uses it as the default PDF filename
-  useEffect(() => {
-    document.title = 'ACE-Apps — Vocabulary Builder Sales Presentation';
-    return () => { document.title = 'Mockup Canvas'; };
-  }, []);
+  const [filename, setFilename] = useState(DEFAULT_FILENAME);
+  const prevTitle = useRef(document.title);
 
   // Screen scale: fit slides to viewport width
   useEffect(() => {
@@ -24,68 +21,60 @@ export function PresentationPrint() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // beforeprint: force every slide to exact pixel dimensions so Chrome
-  // renders them at 1280×720 regardless of paper size.
-  // Also clear the title so Chrome embeds NO title metadata in the PDF —
-  // this lets the PDF viewer show the user's chosen filename instead.
+  // afterprint: restore slide inline styles and document title
   useEffect(() => {
-    const before = () => {
-      document.title = '';
-      const blocks = document.querySelectorAll<HTMLElement>('.print-slide-block');
-      blocks.forEach(b => {
-        b.style.setProperty('width',  `${SLIDE_W}px`, 'important');
-        b.style.setProperty('height', `${SLIDE_H}px`, 'important');
-        b.style.setProperty('overflow', 'hidden', 'important');
-        b.style.setProperty('position', 'relative', 'important');
-        b.style.setProperty('page-break-after', 'always', 'important');
-        b.style.setProperty('break-after', 'page', 'important');
-      });
-      const inners = document.querySelectorAll<HTMLElement>('.print-slide-inner');
-      inners.forEach(el => {
-        el.style.setProperty('transform', 'none', 'important');
-        el.style.setProperty('width',  `${SLIDE_W}px`, 'important');
-        el.style.setProperty('height', `${SLIDE_H}px`, 'important');
-        el.style.setProperty('position', 'absolute', 'important');
-        el.style.setProperty('top', '0', 'important');
-        el.style.setProperty('left', '0', 'important');
-      });
-    };
-
     const after = () => {
-      // Restore the title for the browser tab / next print session
-      document.title = 'ACE-Apps — Vocabulary Builder Sales Presentation';
-      // React re-renders from state, so just clear any forced inline styles
+      document.title = prevTitle.current;
       document.querySelectorAll<HTMLElement>('.print-slide-block, .print-slide-inner')
         .forEach(el => el.removeAttribute('style'));
-      // Trigger re-render to restore screen scale
       setScreenScale(s => s);
     };
-
-    window.addEventListener('beforeprint', before);
     window.addEventListener('afterprint', after);
-    return () => {
-      window.removeEventListener('beforeprint', before);
-      window.removeEventListener('afterprint', after);
-    };
+    return () => window.removeEventListener('afterprint', after);
   }, []);
 
-  const handlePrint = useCallback(() => window.print(), []);
+  const handlePrint = () => {
+    // 1. Set the document title to the user's chosen filename.
+    //    Chrome reads this SYNCHRONOUSLY before opening the print dialog,
+    //    so both the suggested filename and the PDF metadata title will match.
+    const name = filename.trim() || DEFAULT_FILENAME;
+    prevTitle.current = document.title;
+    document.title = name;
+
+    // 2. Force exact pixel dimensions on every slide so Chrome doesn't
+    //    rescale the content to fit the paper.
+    const blocks = document.querySelectorAll<HTMLElement>('.print-slide-block');
+    blocks.forEach(b => {
+      b.style.setProperty('width',  `${SLIDE_W}px`, 'important');
+      b.style.setProperty('height', `${SLIDE_H}px`, 'important');
+      b.style.setProperty('overflow', 'hidden', 'important');
+      b.style.setProperty('position', 'relative', 'important');
+      b.style.setProperty('page-break-after', 'always', 'important');
+      b.style.setProperty('break-after', 'page', 'important');
+    });
+    const inners = document.querySelectorAll<HTMLElement>('.print-slide-inner');
+    inners.forEach(el => {
+      el.style.setProperty('transform', 'none', 'important');
+      el.style.setProperty('width',  `${SLIDE_W}px`, 'important');
+      el.style.setProperty('height', `${SLIDE_H}px`, 'important');
+      el.style.setProperty('position', 'absolute', 'important');
+      el.style.setProperty('top', '0', 'important');
+      el.style.setProperty('left', '0', 'important');
+    });
+
+    // 3. Open the print dialog.
+    window.print();
+  };
 
   return (
     <>
       <style>{`
-        /* ─────────── Global resets ─────────── */
         *, *::before, *::after { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
 
-        /* ─────────── Print ─────────── */
+        /* ── Print ── */
         @media print {
-          /* Tell Chrome the exact page size — no paper-size rescaling */
-          @page {
-            size: ${SLIDE_W}px ${SLIDE_H}px;
-            margin: 0;
-          }
-
+          @page { size: ${SLIDE_W}px ${SLIDE_H}px; margin: 0; }
           html, body {
             width:  ${SLIDE_W}px !important;
             height: ${SLIDE_H}px !important;
@@ -94,24 +83,18 @@ export function PresentationPrint() {
             overflow: visible !important;
             background: transparent !important;
           }
-
-          /* Force background colours to print */
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-
           .no-print { display: none !important; }
-
           .print-slides-wrap {
             display: block !important;
             padding: 0 !important;
-            margin:  0 !important;
+            margin: 0 !important;
             background: transparent !important;
           }
-
-          /* Each slide block = one page */
           .print-slide-block {
             display: block !important;
             width:  ${SLIDE_W}px !important;
@@ -129,21 +112,17 @@ export function PresentationPrint() {
             page-break-after: avoid !important;
             break-after: avoid !important;
           }
-
           .print-slide-inner {
             position: absolute !important;
             top: 0 !important; left: 0 !important;
             width:  ${SLIDE_W}px !important;
             height: ${SLIDE_H}px !important;
             transform: none !important;
-            transform-origin: top left !important;
           }
-
-          /* Screen-only label */
           .print-slide-label { display: none !important; }
         }
 
-        /* ─────────── Screen ─────────── */
+        /* ── Screen ── */
         @media screen {
           body { background: #111; }
           .print-slides-wrap {
@@ -182,10 +161,13 @@ export function PresentationPrint() {
         }
       `}</style>
 
-      {/* ── Toolbar (hidden in print) ── */}
-      <Toolbar count={SLIDES.length} onPrint={handlePrint} />
+      <Toolbar
+        count={SLIDES.length}
+        filename={filename}
+        onFilenameChange={setFilename}
+        onPrint={handlePrint}
+      />
 
-      {/* ── Slides ── */}
       <div className="print-slides-wrap">
         {SLIDES.map((SlideComp, i) => {
           const outerW = SLIDE_W * screenScale;
@@ -214,29 +196,38 @@ export function PresentationPrint() {
   );
 }
 
-/* ─────────────────────────────────────────────────── */
-function Toolbar({ count, onPrint }: { count: number; onPrint: () => void }) {
+function Toolbar({
+  count,
+  filename,
+  onFilenameChange,
+  onPrint,
+}: {
+  count: number;
+  filename: string;
+  onFilenameChange: (v: string) => void;
+  onPrint: () => void;
+}) {
   return (
     <div
       className="no-print"
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        height: 60,
+        height: 64,
         background: 'rgba(15,15,15,0.97)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
         display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 24px',
+        gap: 16,
+        padding: '0 20px',
         fontFamily: 'Inter, sans-serif',
       }}
     >
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <div style={{
           background: '#F05A28', borderRadius: 8,
-          width: 32, height: 32, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 32, height: 32,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" width="18" height="18">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
@@ -244,40 +235,69 @@ function Toolbar({ count, onPrint }: { count: number; onPrint: () => void }) {
           </svg>
         </div>
         <div>
-          <div style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>
-            ACE-Apps · Vocabulary Builder
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-            {count} slides · print layout — 1280 × 720 px
-          </div>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>ACE-Apps</div>
+          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>{count} slides</div>
         </div>
       </div>
 
-      {/* Print hints + button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, lineHeight: 1.5 }}>
-          In print dialog → <strong style={{ color: 'rgba(255,255,255,0.7)' }}>More settings</strong>
-          {' → '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Background graphics ✓</strong>
-          {' · '}<strong style={{ color: 'rgba(255,255,255,0.7)' }}>Margins: None</strong>
-        </div>
-        <button
-          onClick={onPrint}
+      {/* Divider */}
+      <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+
+      {/* Filename input */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+        <label style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, flexShrink: 0 }}>
+          Save as:
+        </label>
+        <input
+          type="text"
+          value={filename}
+          onChange={e => onFilenameChange(e.target.value)}
+          placeholder="Enter PDF filename…"
           style={{
-            background: '#F05A28', color: 'white', border: 'none',
-            borderRadius: 8, padding: '10px 22px',
-            fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontFamily: 'Inter, sans-serif', flexShrink: 0,
+            flex: 1,
+            minWidth: 0,
+            background: 'rgba(255,255,255,0.07)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 6,
+            color: 'white',
+            fontSize: 13,
+            padding: '6px 12px',
+            fontFamily: 'Inter, sans-serif',
+            outline: 'none',
           }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="6 9 6 2 18 2 18 9" />
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-            <rect x="6" y="14" width="12" height="8" />
-          </svg>
-          Save as PDF — all {count} slides
-        </button>
+          onFocus={e => (e.target.style.borderColor = '#F05A28')}
+          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.15)')}
+        />
+        <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, flexShrink: 0 }}>.pdf</span>
       </div>
+
+      {/* Divider */}
+      <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+
+      {/* Hint */}
+      <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, flexShrink: 0, lineHeight: 1.4 }}>
+        Enable <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Background graphics</strong><br />
+        + Margins: <strong style={{ color: 'rgba(255,255,255,0.6)' }}>None</strong>
+      </div>
+
+      {/* Save button */}
+      <button
+        onClick={onPrint}
+        style={{
+          background: '#F05A28', color: 'white', border: 'none',
+          borderRadius: 8, padding: '10px 20px',
+          fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'Inter, sans-serif', flexShrink: 0,
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="6 9 6 2 18 2 18 9" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect x="6" y="14" width="12" height="8" />
+        </svg>
+        Save as PDF
+      </button>
     </div>
   );
 }
