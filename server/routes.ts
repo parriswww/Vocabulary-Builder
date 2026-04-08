@@ -328,18 +328,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : (subscriberRegistry.get(uid)?.adminGrantedFreeUntil ?? null);
 
       const existing = subscriberRegistry.get(uid) || {} as SubscriberRecord;
+
+      // Never allow register-subscriber to downgrade an admin-activated paid subscription.
+      // If the registry already has isPremium=true with a future currentPeriodEnd,
+      // keep those values regardless of what the (possibly stale) client sends.
+      const existingIsPaidActive =
+        existing.isPremium === true &&
+        existing.currentPeriodEnd &&
+        existing.currentPeriodEnd > Date.now();
+
+      const resolvedIsPremium  = existingIsPaidActive ? true  : (isPremium ?? existing.isPremium ?? false);
+      const resolvedStatus     = existingIsPaidActive ? 'active' : (status || existing.status || 'none');
+      const resolvedPeriodEnd  = existingIsPaidActive ? existing.currentPeriodEnd : (currentPeriodEnd ?? existing.currentPeriodEnd ?? null);
+
       subscriberRegistry.set(uid, {
         uid,
         email: email || existing.email || null,
         displayName: displayName || existing.displayName || null,
-        status: status || existing.status || 'none',
-        isPremium: isPremium ?? existing.isPremium ?? false,
+        status: resolvedStatus,
+        isPremium: resolvedIsPremium,
         trialStartDate: trialStartDate ?? existing.trialStartDate ?? null,
         trialEndDate: trialEndDate ?? existing.trialEndDate ?? null,
         adminGrantedFreeUntil,
         subscriptionId: subscriptionId || existing.subscriptionId || null,
         customerId: customerId || existing.customerId || null,
-        currentPeriodEnd: currentPeriodEnd ?? existing.currentPeriodEnd ?? null,
+        currentPeriodEnd: resolvedPeriodEnd,
         cancelAtPeriodEnd: existing.cancelAtPeriodEnd ?? false,
         updatedAt: Date.now(),
       });
@@ -366,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // --- Get subscription override for a user (admin-extended trials, free months) ---
+  // --- Get subscription override for a user (admin-extended trials, free months, paid activations) ---
   app.get('/api/subscription/override/:uid', (req, res) => {
     const { uid } = req.params;
     const record = subscriberRegistry.get(uid);
@@ -377,6 +390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trialEndDate: record.trialEndDate,
         adminGrantedFreeUntil: record.adminGrantedFreeUntil,
         status: record.status,
+        // Expose isPremium and currentPeriodEnd so the frontend can grant access
+        // even when Firestore hasn't propagated the admin's activation yet
+        isPremium: record.isPremium ?? false,
+        currentPeriodEnd: record.currentPeriodEnd ?? null,
       }
     });
   });

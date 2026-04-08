@@ -626,7 +626,13 @@ function App() {
             });
           } catch (e) { /* non-critical */ }
           // Now fetch admin overrides — registry is populated so grants are visible
-          let adminOverride: { trialEndDate?: number | null; adminGrantedFreeUntil?: number | null } = {};
+          let adminOverride: {
+            trialEndDate?: number | null;
+            adminGrantedFreeUntil?: number | null;
+            isPremium?: boolean;
+            currentPeriodEnd?: number | null;
+            status?: string;
+          } = {};
           try {
             const overrideRes = await fetch(`/api/subscription/override/${user.uid}`);
             const overrideData = await overrideRes.json();
@@ -634,13 +640,17 @@ function App() {
           } catch (e) {
             // ignore
           }
+          // Override isPremium / currentPeriodEnd from the admin registry if the registry
+          // says the user is paid — this handles the case where Firestore hasn't propagated yet.
+          const overrideIsPremium = adminOverride.isPremium === true;
+          const overridePeriodEnd = adminOverride.currentPeriodEnd ?? null;
           setSubscription({
-            isPremium: data.isPremium || false,
+            isPremium: overrideIsPremium || data.isPremium || false,
             subscriptionId: data.subscriptionId || null,
             customerId: data.customerId || null,
-            status: data.status || 'none',
+            status: overrideIsPremium ? 'active' : (data.status || 'none'),
             priceId: data.priceId || null,
-            currentPeriodEnd: data.currentPeriodEnd || null,
+            currentPeriodEnd: overridePeriodEnd || data.currentPeriodEnd || null,
             cancelAtPeriodEnd: data.cancelAtPeriodEnd || false,
             updatedAt: data.updatedAt || null,
             trialStartDate: data.trialStartDate || null,
