@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import type { Subscription, PaddleWebhookEvent, SubscriberRecord } from "@shared/schema";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 
 // Auto-detect Paddle environment from token/key prefix (live_ = production, test_ = sandbox)
 const paddleIsLive = (process.env.PADDLE_CLIENT_TOKEN || '').startsWith('live_') 
@@ -16,8 +17,33 @@ const PADDLE_API_URL = paddleIsLive
 const FIREBASE_API_URL = 'https://firestore.googleapis.com/v1';
 const FIREBASE_AUTH_URL = 'https://identitytoolkit.googleapis.com/v1';
 
-// --- In-memory subscriber registry ---
-const subscriberRegistry = new Map<string, SubscriberRecord>();
+// --- Persistent subscriber registry (file-backed so it survives restarts) ---
+const REGISTRY_FILE = path.resolve(import.meta.dirname, 'data', 'subscribers.json');
+
+function loadRegistry(): Map<string, SubscriberRecord> {
+  try {
+    if (fs.existsSync(REGISTRY_FILE)) {
+      const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
+      const entries: [string, SubscriberRecord][] = JSON.parse(raw);
+      console.log(`[registry] Loaded ${entries.length} subscribers from disk`);
+      return new Map(entries);
+    }
+  } catch (err) {
+    console.warn('[registry] Failed to load registry file:', err);
+  }
+  return new Map();
+}
+
+function saveRegistry(registry: Map<string, SubscriberRecord>): void {
+  try {
+    fs.mkdirSync(path.dirname(REGISTRY_FILE), { recursive: true });
+    fs.writeFileSync(REGISTRY_FILE, JSON.stringify(Array.from(registry.entries()), null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[registry] Failed to save registry file:', err);
+  }
+}
+
+const subscriberRegistry = loadRegistry();
 
 // --- Email-based permanent free access grants (persists across sessions via Firestore) ---
 // Add emails here or via POST /api/admin/grant-forever-by-email
@@ -91,6 +117,126 @@ function requireAdmin(req: Request, res: Response): boolean {
 }
 
 // --- Firestore REST API helpers ---
+
+/** Read a single Firestore document and return its fields map (or null if missing). */
+async function firestoreGetDoc(
+  projectId: string,
+  docPath: string
+): Promise<Record<string, any> | null> {
+  const apiKey = process.env.FIREBASE_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const url = `${FIREBASE_API_URL}/projects/${projectId}/databases/(default)/documents/${docPath}?key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.fields || {};
+  } catch {
+    return null;
+  }
+}
+
+/** List all user UIDs stored under artifacts/{appId}/users */
+async function firestoreListUserIds(
+  projectId: string,
+  appId: string
+): Promise<string[]> {
+  const apiKey = process.env.FIREBASE_API_KEY;
+  if (!apiKey) return [];
+  try {
+    const uids: string[] = [];
+    let pageToken = '';
+    do {
+      const url = `${FIREBASE_API_URL}/projects/${projectId}/databases/(default)/documents/artifacts/${appId}/users?pageSize=300${pageToken ? `&pageToken=${pageToken}` : ''}&key=${apiKey}`;
+      const res = await fetch(url);
+      if (!res.ok) break;
+      const data = await res.json();
+      for (const doc of (data.documents || [])) {
+        const parts = (doc.name as string).split('/');
+        uids.push(parts[parts.length - 1]);
+      }
+      pageToken = data.nextPageToken || '';
+    } while (pageToken);
+    return uids;
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch all users from Firestore, merging subscription + profile documents. */
+async function firestoreListAllUsers(
+  projectId: string,
+  appId: string
+): Promise<SubscriberRecord[]> {
+  const apiKey = process.env.FIREBASE_API_KEY;
+  if (!apiKey) return [];
+  try {
+    const uids = await firestoreListUserIds(projectId, appId);
+    if (uids.length === 0) return [];
+
+    // Batch-get subscription + profile docs for all users in one request
+    const docPaths = uids.flatMap(uid => [
+      `projects/${projectId}/databases/(default)/documents/artifacts/${appId}/users/${uid}/metadata/subscription`,
+      `projects/${projectId}/databases/(default)/documents/artifacts/${appId}/users/${uid}/metadata/profile`,
+    ]);
+
+    const batchUrl = `${FIREBASE_API_URL}/projects/${projectId}/databases/(default)/documents:batchGet?key=${apiKey}`;
+    const batchRes = await fetch(batchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documents: docPaths }),
+    });
+
+    const subscriptions = new Map<string, Record<string, any>>();
+    const profiles = new Map<string, Record<string, any>>();
+
+    if (batchRes.ok) {
+      const results: any[] = await batchRes.json();
+      for (const result of results) {
+        if (!result.found) continue;
+        const name: string = result.found.name;
+        const parts = name.split('/');
+        const docId = parts[parts.length - 1];          // 'subscription' or 'profile'
+        const uid  = parts[parts.length - 3];           // the user UID
+        const fields = result.found.fields || {};
+        if (docId === 'subscription') subscriptions.set(uid, fields);
+        else if (docId === 'profile') profiles.set(uid, fields);
+      }
+    }
+
+    const getStr  = (f: any) => f?.stringValue  ?? null;
+    const getBool = (f: any) => f?.booleanValue  ?? false;
+    const getNum  = (f: any) => f?.integerValue  ? parseInt(f.integerValue, 10) : null;
+
+    return uids.map(uid => {
+      const sub  = subscriptions.get(uid) || {};
+      const prof = profiles.get(uid) || {};
+      const mem  = subscriberRegistry.get(uid);
+
+      // In-memory admin overrides (extend-trial, grant-free-month) take precedence
+      // over Firestore so they appear immediately even before Firestore propagates.
+      return {
+        uid,
+        email:               getStr(prof.email)              || getStr(sub.email)              || mem?.email              || null,
+        displayName:         getStr(prof.displayName)        || getStr(sub.displayName)        || mem?.displayName        || null,
+        status:              mem?.status                     || getStr(sub.status)              || 'none',
+        isPremium:           mem?.isPremium                  ?? getBool(sub.isPremium),
+        trialStartDate:      mem?.trialStartDate             ?? getNum(sub.trialStartDate)      ?? null,
+        trialEndDate:        mem?.trialEndDate               ?? getNum(sub.trialEndDate)        ?? null,
+        adminGrantedFreeUntil: mem?.adminGrantedFreeUntil   ?? getNum(sub.adminGrantedFreeUntil) ?? null,
+        subscriptionId:      getStr(sub.subscriptionId)      || mem?.subscriptionId             || null,
+        customerId:          getStr(sub.customerId)          || mem?.customerId                 || null,
+        currentPeriodEnd:    mem?.currentPeriodEnd           ?? getNum(sub.currentPeriodEnd)    ?? null,
+        cancelAtPeriodEnd:   mem?.cancelAtPeriodEnd          ?? getBool(sub.cancelAtPeriodEnd),
+        updatedAt:           mem?.updatedAt                  ?? getNum(sub.updatedAt)           ?? Date.now(),
+      } as SubscriberRecord;
+    });
+  } catch (err) {
+    console.warn('firestoreListAllUsers failed:', err);
+    return [];
+  }
+}
+
 async function firestoreUpdateSubscription(
   projectId: string,
   appId: string,
@@ -197,6 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancelAtPeriodEnd: existing.cancelAtPeriodEnd ?? false,
         updatedAt: Date.now(),
       });
+      saveRegistry(subscriberRegistry);
 
       // Persist permanent grant to Firestore only on first registration (prevents infinite onSnapshot loop)
       const grantAlreadyPersisted = existing.adminGrantedFreeUntil === FREE_FOREVER_TIMESTAMP;
@@ -258,11 +405,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ token, expiresIn: ADMIN_SESSION_TTL });
   });
 
-  // --- Admin: List all subscribers ---
+  // --- Admin: List all subscribers (from persistent file-backed registry) ---
   app.get('/api/admin/subscribers', (req, res) => {
     if (!requireAdmin(req, res)) return;
     const list = Array.from(subscriberRegistry.values()).sort((a, b) => b.updatedAt - a.updatedAt);
-    res.json({ subscribers: list });
+    res.json({ subscribers: list, source: 'persistent-registry' });
+  });
+
+  // --- Admin: Activate paid subscription (for QR / manual payments) ---
+  app.post('/api/admin/activate-paid', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    const { uid, months } = req.body;
+    if (!uid) return res.status(400).json({ error: 'Missing uid' });
+
+    const numMonths = (typeof months === 'number' && months > 0) ? months : 6;
+    const periodEnd = Date.now() + numMonths * 30 * 24 * 60 * 60 * 1000;
+
+    const record = subscriberRegistry.get(uid);
+    subscriberRegistry.set(uid, {
+      ...(record || { uid, email: null, displayName: null, trialStartDate: null, trialEndDate: null, subscriptionId: null, customerId: null, cancelAtPeriodEnd: false, adminGrantedFreeUntil: null }),
+      uid,
+      isPremium: true,
+      status: 'active',
+      currentPeriodEnd: periodEnd,
+      updatedAt: Date.now(),
+    });
+    saveRegistry(subscriberRegistry);
+
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const appId = projectId || 'vocab-app';
+    if (projectId) {
+      await firestoreUpdateSubscription(projectId, appId, uid, {
+        isPremium: true,
+        status: 'active',
+        currentPeriodEnd: periodEnd,
+        updatedAt: Date.now(),
+      });
+    }
+
+    res.json({ success: true, currentPeriodEnd: periodEnd, months: numMonths });
   });
 
   // --- Admin: Extend trial ---
@@ -287,6 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: 'trialing',
       updatedAt: Date.now(),
     });
+    saveRegistry(subscriberRegistry);
 
     // Try to update Firestore
     const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -318,6 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       adminGrantedFreeUntil: freeUntil,
       updatedAt: Date.now(),
     });
+    saveRegistry(subscriberRegistry);
 
     // Try to update Firestore
     const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -347,6 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (const [uid, record] of Array.from(subscriberRegistry.entries())) {
       if ((record.email || '').toLowerCase().trim() === normalizedEmail) {
         subscriberRegistry.set(uid, { ...record, adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP, updatedAt: Date.now() });
+        saveRegistry(subscriberRegistry);
         appliedToUid = uid;
         const projectId = process.env.FIREBASE_PROJECT_ID;
         const appId = projectId || 'vocab-app';
@@ -459,6 +644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update subscriber registry
       const existing = subscriberRegistry.get(userId) || {} as SubscriberRecord;
       subscriberRegistry.set(userId, { ...existing, ...registryUpdate } as SubscriberRecord);
+      saveRegistry(subscriberRegistry);
 
       console.log('Subscription update for user', userId, ':', subscriptionUpdate);
       res.status(200).send('OK');
