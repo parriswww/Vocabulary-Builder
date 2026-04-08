@@ -22,6 +22,8 @@ The backend utilizes an Express.js server with TypeScript, employing a middlewar
 
 The primary database is Firebase Firestore, a real-time NoSQL cloud database. It stores user-specific vocabulary entries and metadata for streak tracking, with real-time listeners ensuring UI updates. Firebase Authentication v11 handles user authentication, primarily anonymous login, with support for custom tokens and session persistence. Browser localStorage is used for client-side preferences.
 
+**Admin Subscriber Registry**: The admin panel's subscriber registry is stored in Replit's built-in PostgreSQL database (`subscribers` table). This persists subscriber data, admin activations, trial extensions, and payment status across deployments and server restarts. The `server/db.ts` module provides the DB connection and typed helper functions (`dbGetSubscriber`, `dbUpsertSubscriber`, `dbGetAllSubscribers`, `dbFindSubscriberByEmail`). Data previously stored in `server/data/subscribers.json` (file-backed, wiped on redeploy) has been fully migrated to the database.
+
 ### System Design Choices
 
 The application features a mobile-first design with a vertical navigation pattern. The UI incorporates vibrant gradient elements, 3D rounded navigation buttons, and a consistent spacing system. It includes a combined landing and login page, a settings view, and a comprehensive help dialog. Monetization is handled through a paywall model with a 7-day free trial, integrated with Paddle for subscriptions and a dedicated admin dashboard for management. Legal pages (Privacy Policy, Terms of Service, Refund Policy) are also included.

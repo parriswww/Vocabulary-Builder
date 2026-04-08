@@ -4,7 +4,12 @@ import { storage } from "./storage";
 import type { Subscription, PaddleWebhookEvent, SubscriberRecord } from "@shared/schema";
 import path from "path";
 import crypto from "crypto";
-import fs from "fs";
+import {
+  dbGetSubscriber,
+  dbGetAllSubscribers,
+  dbFindSubscriberByEmail,
+  dbUpsertSubscriber,
+} from "./db";
 
 // Auto-detect Paddle environment from token/key prefix (live_ = production, test_ = sandbox)
 const paddleIsLive = (process.env.PADDLE_CLIENT_TOKEN || '').startsWith('live_') 
@@ -16,34 +21,6 @@ const PADDLE_API_URL = paddleIsLive
 
 const FIREBASE_API_URL = 'https://firestore.googleapis.com/v1';
 const FIREBASE_AUTH_URL = 'https://identitytoolkit.googleapis.com/v1';
-
-// --- Persistent subscriber registry (file-backed so it survives restarts) ---
-const REGISTRY_FILE = path.resolve(import.meta.dirname, 'data', 'subscribers.json');
-
-function loadRegistry(): Map<string, SubscriberRecord> {
-  try {
-    if (fs.existsSync(REGISTRY_FILE)) {
-      const raw = fs.readFileSync(REGISTRY_FILE, 'utf8');
-      const entries: [string, SubscriberRecord][] = JSON.parse(raw);
-      console.log(`[registry] Loaded ${entries.length} subscribers from disk`);
-      return new Map(entries);
-    }
-  } catch (err) {
-    console.warn('[registry] Failed to load registry file:', err);
-  }
-  return new Map();
-}
-
-function saveRegistry(registry: Map<string, SubscriberRecord>): void {
-  try {
-    fs.mkdirSync(path.dirname(REGISTRY_FILE), { recursive: true });
-    fs.writeFileSync(REGISTRY_FILE, JSON.stringify(Array.from(registry.entries()), null, 2), 'utf8');
-  } catch (err) {
-    console.warn('[registry] Failed to save registry file:', err);
-  }
-}
-
-const subscriberRegistry = loadRegistry();
 
 // --- Email-based permanent free access grants (persists across sessions via Firestore) ---
 // Add emails here or via POST /api/admin/grant-forever-by-email
@@ -208,12 +185,16 @@ async function firestoreListAllUsers(
     const getBool = (f: any) => f?.booleanValue  ?? false;
     const getNum  = (f: any) => f?.integerValue  ? parseInt(f.integerValue, 10) : null;
 
+    // Pre-load all DB records into a Map for O(1) lookup
+    const dbRecords = await dbGetAllSubscribers();
+    const dbMap = new Map<string, SubscriberRecord>(dbRecords.map(r => [r.uid, r]));
+
     return uids.map(uid => {
       const sub  = subscriptions.get(uid) || {};
       const prof = profiles.get(uid) || {};
-      const mem  = subscriberRegistry.get(uid);
+      const mem  = dbMap.get(uid);
 
-      // In-memory admin overrides (extend-trial, grant-free-month) take precedence
+      // DB admin overrides (extend-trial, grant-free-month, activate-paid) take precedence
       // over Firestore so they appear immediately even before Firestore propagates.
       return {
         uid,
@@ -323,43 +304,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this email has a permanent free grant
       const normalizedEmail = (email || '').toLowerCase().trim();
       const hasPermanentGrant = normalizedEmail && emailForeverGrants.has(normalizedEmail);
+      const existing = await dbGetSubscriber(uid);
       const adminGrantedFreeUntil = hasPermanentGrant
         ? FREE_FOREVER_TIMESTAMP
-        : (subscriberRegistry.get(uid)?.adminGrantedFreeUntil ?? null);
-
-      const existing = subscriberRegistry.get(uid) || {} as SubscriberRecord;
+        : (existing?.adminGrantedFreeUntil ?? null);
 
       // Never allow register-subscriber to downgrade an admin-activated paid subscription.
-      // If the registry already has isPremium=true with a future currentPeriodEnd,
+      // If the DB already has isPremium=true with a future currentPeriodEnd,
       // keep those values regardless of what the (possibly stale) client sends.
       const existingIsPaidActive =
-        existing.isPremium === true &&
-        existing.currentPeriodEnd &&
+        existing?.isPremium === true &&
+        existing?.currentPeriodEnd &&
         existing.currentPeriodEnd > Date.now();
 
-      const resolvedIsPremium  = existingIsPaidActive ? true  : (isPremium ?? existing.isPremium ?? false);
-      const resolvedStatus     = existingIsPaidActive ? 'active' : (status || existing.status || 'none');
-      const resolvedPeriodEnd  = existingIsPaidActive ? existing.currentPeriodEnd : (currentPeriodEnd ?? existing.currentPeriodEnd ?? null);
+      const resolvedIsPremium  = existingIsPaidActive ? true  : (isPremium ?? existing?.isPremium ?? false);
+      const resolvedStatus     = existingIsPaidActive ? 'active' : (status || existing?.status || 'none');
+      const resolvedPeriodEnd  = existingIsPaidActive ? existing!.currentPeriodEnd : (currentPeriodEnd ?? existing?.currentPeriodEnd ?? null);
 
-      subscriberRegistry.set(uid, {
+      await dbUpsertSubscriber({
         uid,
-        email: email || existing.email || null,
-        displayName: displayName || existing.displayName || null,
+        email: email || existing?.email || null,
+        displayName: displayName || existing?.displayName || null,
         status: resolvedStatus,
         isPremium: resolvedIsPremium,
-        trialStartDate: trialStartDate ?? existing.trialStartDate ?? null,
-        trialEndDate: trialEndDate ?? existing.trialEndDate ?? null,
+        trialStartDate: trialStartDate ?? existing?.trialStartDate ?? null,
+        trialEndDate: trialEndDate ?? existing?.trialEndDate ?? null,
         adminGrantedFreeUntil,
-        subscriptionId: subscriptionId || existing.subscriptionId || null,
-        customerId: customerId || existing.customerId || null,
+        subscriptionId: subscriptionId || existing?.subscriptionId || null,
+        customerId: customerId || existing?.customerId || null,
         currentPeriodEnd: resolvedPeriodEnd,
-        cancelAtPeriodEnd: existing.cancelAtPeriodEnd ?? false,
+        cancelAtPeriodEnd: existing?.cancelAtPeriodEnd ?? false,
         updatedAt: Date.now(),
       });
-      saveRegistry(subscriberRegistry);
 
       // Persist permanent grant to Firestore only on first registration (prevents infinite onSnapshot loop)
-      const grantAlreadyPersisted = existing.adminGrantedFreeUntil === FREE_FOREVER_TIMESTAMP;
+      const grantAlreadyPersisted = existing?.adminGrantedFreeUntil === FREE_FOREVER_TIMESTAMP;
       if (hasPermanentGrant && !grantAlreadyPersisted) {
         const projectId = process.env.FIREBASE_PROJECT_ID;
         const appId = projectId || 'vocab-app';
@@ -380,9 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- Get subscription override for a user (admin-extended trials, free months, paid activations) ---
-  app.get('/api/subscription/override/:uid', (req, res) => {
+  app.get('/api/subscription/override/:uid', async (req, res) => {
     const { uid } = req.params;
-    const record = subscriberRegistry.get(uid);
+    const record = await dbGetSubscriber(uid);
     if (!record) return res.json({ override: null });
 
     res.json({
@@ -422,10 +401,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ token, expiresIn: ADMIN_SESSION_TTL });
   });
 
-  // --- Admin: List all subscribers (from persistent file-backed registry) ---
-  app.get('/api/admin/subscribers', (req, res) => {
+  // --- Admin: List all subscribers (from persistent database registry) ---
+  app.get('/api/admin/subscribers', async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const list = Array.from(subscriberRegistry.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    const list = await dbGetAllSubscribers();
     res.json({ subscribers: list, source: 'persistent-registry' });
   });
 
@@ -439,16 +418,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const numMonths = (typeof months === 'number' && months > 0) ? months : 6;
     const periodEnd = Date.now() + numMonths * 30 * 24 * 60 * 60 * 1000;
 
-    const record = subscriberRegistry.get(uid);
-    subscriberRegistry.set(uid, {
-      ...(record || { uid, email: null, displayName: null, trialStartDate: null, trialEndDate: null, subscriptionId: null, customerId: null, cancelAtPeriodEnd: false, adminGrantedFreeUntil: null }),
+    const record = await dbGetSubscriber(uid);
+    await dbUpsertSubscriber({
+      ...(record || { uid, email: null, displayName: null, trialStartDate: null, trialEndDate: null, subscriptionId: null, customerId: null, cancelAtPeriodEnd: false, adminGrantedFreeUntil: null, status: 'none', isPremium: false, currentPeriodEnd: null, updatedAt: 0 }),
       uid,
       isPremium: true,
       status: 'active',
       currentPeriodEnd: periodEnd,
       updatedAt: Date.now(),
     });
-    saveRegistry(subscriberRegistry);
 
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const appId = projectId || 'vocab-app';
@@ -473,20 +451,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: 'Missing uid or days' });
     }
 
-    const record = subscriberRegistry.get(uid);
+    const record = await dbGetSubscriber(uid);
     const currentTrialEnd = record?.trialEndDate && record.trialEndDate > Date.now()
       ? record.trialEndDate
       : Date.now();
     const newTrialEnd = currentTrialEnd + days * 24 * 60 * 60 * 1000;
 
-    subscriberRegistry.set(uid, {
-      ...(record || { uid, email: null, displayName: null, isPremium: false, status: 'trialing', subscriptionId: null, customerId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, adminGrantedFreeUntil: null, trialStartDate: null }),
+    await dbUpsertSubscriber({
+      ...(record || { uid, email: null, displayName: null, isPremium: false, status: 'trialing', subscriptionId: null, customerId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, adminGrantedFreeUntil: null, trialStartDate: null, updatedAt: 0 }),
       uid,
       trialEndDate: newTrialEnd,
       status: 'trialing',
       updatedAt: Date.now(),
     });
-    saveRegistry(subscriberRegistry);
 
     // Try to update Firestore
     const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -509,16 +486,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { uid } = req.body;
     if (!uid) return res.status(400).json({ error: 'Missing uid' });
 
-    const record = subscriberRegistry.get(uid);
+    const record = await dbGetSubscriber(uid);
     const freeUntil = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days from now
 
-    subscriberRegistry.set(uid, {
-      ...(record || { uid, email: null, displayName: null, isPremium: false, status: 'none', subscriptionId: null, customerId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, trialStartDate: null, trialEndDate: null }),
+    await dbUpsertSubscriber({
+      ...(record || { uid, email: null, displayName: null, isPremium: false, status: 'none', subscriptionId: null, customerId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, trialStartDate: null, trialEndDate: null, updatedAt: 0 }),
       uid,
       adminGrantedFreeUntil: freeUntil,
       updatedAt: Date.now(),
     });
-    saveRegistry(subscriberRegistry);
 
     // Try to update Firestore
     const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -545,20 +521,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Also apply immediately to any already-registered user with this email
     let appliedToUid: string | null = null;
-    for (const [uid, record] of Array.from(subscriberRegistry.entries())) {
-      if ((record.email || '').toLowerCase().trim() === normalizedEmail) {
-        subscriberRegistry.set(uid, { ...record, adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP, updatedAt: Date.now() });
-        saveRegistry(subscriberRegistry);
-        appliedToUid = uid;
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        const appId = projectId || 'vocab-app';
-        if (projectId) {
-          await firestoreUpdateSubscription(projectId, appId, uid, {
-            adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP,
-            updatedAt: Date.now(),
-          });
-        }
-        break;
+    const matchedRecord = await dbFindSubscriberByEmail(normalizedEmail);
+    if (matchedRecord) {
+      await dbUpsertSubscriber({ ...matchedRecord, adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP, updatedAt: Date.now() });
+      appliedToUid = matchedRecord.uid;
+      const projectId = process.env.FIREBASE_PROJECT_ID;
+      const appId = projectId || 'vocab-app';
+      if (projectId) {
+        await firestoreUpdateSubscription(projectId, appId, matchedRecord.uid, {
+          adminGrantedFreeUntil: FREE_FOREVER_TIMESTAMP,
+          updatedAt: Date.now(),
+        });
       }
     }
 
@@ -658,10 +631,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Unhandled webhook event:', event.event_type);
       }
 
-      // Update subscriber registry
-      const existing = subscriberRegistry.get(userId) || {} as SubscriberRecord;
-      subscriberRegistry.set(userId, { ...existing, ...registryUpdate } as SubscriberRecord);
-      saveRegistry(subscriberRegistry);
+      // Update subscriber DB record
+      const existing = await dbGetSubscriber(userId);
+      await dbUpsertSubscriber({ ...(existing || { uid: userId, email: null, displayName: null, isPremium: false, status: 'none', trialStartDate: null, trialEndDate: null, adminGrantedFreeUntil: null, subscriptionId: null, customerId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, updatedAt: 0 }), ...registryUpdate } as SubscriberRecord);
 
       console.log('Subscription update for user', userId, ':', subscriptionUpdate);
       res.status(200).send('OK');
@@ -681,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify the customerId belongs to the requesting user
       if (uid) {
-        const record = subscriberRegistry.get(uid);
+        const record = await dbGetSubscriber(uid);
         if (record && record.customerId && record.customerId !== customerId) {
           return res.status(403).json({ error: 'Customer ID mismatch' });
         }

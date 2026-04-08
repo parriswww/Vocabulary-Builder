@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { dbInit } from "./db";
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await dbInit();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
