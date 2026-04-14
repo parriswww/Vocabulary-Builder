@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import {
   privacyPolicyContent,
   termsOfServiceContent,
@@ -9,7 +9,7 @@ type LegalType = "privacy" | "terms" | "refund";
 
 function renderMarkdown(md: string) {
   const lines = md.split("\n");
-  const result: React.ReactNode[] = [];
+  const result: ReactNode[] = [];
   let key = 0;
   for (const line of lines) {
     if (line.startsWith("## ")) {
