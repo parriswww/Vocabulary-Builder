@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { useState, useEffect } from "react";
 import App from "./App";
 import AdminPanel from "./AdminPanel";
 import EmployeesPage from "./pages/Employees";
@@ -15,22 +16,60 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Support both /admin path AND ?admin=true query param
-// The query param survives CDN/proxy redirects that may strip the path
-const params = new URLSearchParams(window.location.search);
-const isAdminRoute =
-  window.location.pathname === '/admin' ||
-  window.location.pathname === '/admin/' ||
-  params.get('admin') === 'true';
+function getRouteComponent(pathname: string, search: string) {
+  const params = new URLSearchParams(search);
+  const isAdminRoute =
+    pathname === '/admin' ||
+    pathname === '/admin/' ||
+    params.get('admin') === 'true';
+  const isEmployeesRoute =
+    pathname === '/employees' ||
+    pathname === '/employees/' ||
+    params.get('employees') === 'true';
 
-const isEmployeesRoute =
-  window.location.pathname === '/employees' ||
-  window.location.pathname === '/employees/';
+  if (isAdminRoute) return 'admin';
+  if (isEmployeesRoute) return 'employees';
+  return 'app';
+}
 
-const rootComponent = isAdminRoute
-  ? <AdminPanel />
-  : isEmployeesRoute
-  ? <EmployeesPage />
-  : <App />;
+// Root component that re-evaluates the route reactively
+// This handles Replit canvas preview which may use pushState AFTER initial mount
+function Root() {
+  const [route, setRoute] = useState(() =>
+    getRouteComponent(window.location.pathname, window.location.search)
+  );
 
-createRoot(document.getElementById("root")!).render(rootComponent);
+  useEffect(() => {
+    const update = () => {
+      setRoute(getRouteComponent(window.location.pathname, window.location.search));
+    };
+
+    // Re-check when history navigation occurs
+    window.addEventListener('popstate', update);
+
+    // Patch pushState and replaceState so canvas pushState navigation is caught
+    const origPush = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+
+    history.pushState = function (...args) {
+      origPush(...args);
+      update();
+    };
+    history.replaceState = function (...args) {
+      origReplace(...args);
+      update();
+    };
+
+    return () => {
+      window.removeEventListener('popstate', update);
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+    };
+  }, []);
+
+  if (route === 'admin') return <AdminPanel />;
+  if (route === 'employees') return <EmployeesPage />;
+  return <App />;
+}
+
+createRoot(document.getElementById("root")!).render(<Root />);
