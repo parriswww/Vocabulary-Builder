@@ -18,14 +18,23 @@ window.addEventListener('unhandledrejection', (event) => {
 
 function getRouteComponent(pathname: string, search: string) {
   const params = new URLSearchParams(search);
+  // initialPath is set by the Replit canvas preview wrapper:
+  // /__replco/workspace_iframe.html?initialPath=%2Femployees
+  const initialPath = params.get('initialPath') || '';
+
   const isAdminRoute =
     pathname === '/admin' ||
     pathname === '/admin/' ||
-    params.get('admin') === 'true';
+    params.get('admin') === 'true' ||
+    initialPath === '/admin' ||
+    initialPath === '/admin/';
+
   const isEmployeesRoute =
     pathname === '/employees' ||
     pathname === '/employees/' ||
-    params.get('employees') === 'true';
+    params.get('employees') === 'true' ||
+    initialPath === '/employees' ||
+    initialPath === '/employees/';
 
   if (isAdminRoute) return 'admin';
   if (isEmployeesRoute) return 'employees';
