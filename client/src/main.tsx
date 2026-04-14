@@ -41,12 +41,30 @@ function getRouteComponent(pathname: string, search: string) {
   return 'app';
 }
 
+// Hide the HTML splash screen (only App.tsx normally does this, but
+// EmployeesPage and AdminPanel don't go through Firebase init, so we must
+// hide it here for those routes).
+function hideSplash() {
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.style.transition = 'opacity 0.3s ease';
+    splash.style.opacity = '0';
+    setTimeout(() => { splash.style.display = 'none'; }, 300);
+  }
+}
+
 // Root component that re-evaluates the route reactively
 // This handles Replit canvas preview which may use pushState AFTER initial mount
 function Root() {
   const [route, setRoute] = useState(() =>
     getRouteComponent(window.location.pathname, window.location.search)
   );
+
+  // If not the main App, immediately hide the splash screen since App.tsx
+  // won't get a chance to do it.
+  useEffect(() => {
+    if (route !== 'app') hideSplash();
+  }, [route]);
 
   useEffect(() => {
     const update = () => {
