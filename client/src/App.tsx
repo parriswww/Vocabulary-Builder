@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   signOut,
+  signInAnonymously,
   onAuthStateChanged,
   type Auth, 
   type User 
@@ -515,8 +516,15 @@ function App() {
         setFirebaseApp(app);
         setAuth(authInstance);
         setDb(dbInstance);
-        onAuthStateChanged(authInstance, (user) => {
-          setUser(user);
+        onAuthStateChanged(authInstance, (newUser) => {
+          // Only update the user object when the UID actually changes.
+          // Token refreshes fire onAuthStateChanged with the same UID but a new
+          // object reference — keeping the stable reference prevents the
+          // subscription useEffect from re-running and resetting subscriptionChecked.
+          setUser(prev => {
+            if (prev?.uid === newUser?.uid) return prev;
+            return newUser;
+          });
           setLoading(false);
         });
       } catch (error) {
@@ -574,6 +582,16 @@ function App() {
     }
   }, []);
 
+  // When direct checkout is requested and auth is ready but no user, auto sign in
+  // anonymously so the visitor can go straight to checkout without creating an account.
+  useEffect(() => {
+    if (isDirectCheckout && auth && !user && !loading) {
+      signInAnonymously(auth).catch((err) => {
+        console.warn('Anonymous sign-in failed for direct checkout:', err);
+      });
+    }
+  }, [isDirectCheckout, auth, user, loading]);
+
   useEffect(() => {
     if (isDirectCheckout && paddleInitialized && user && subscriptionChecked) {
       setShowUpgradeDialog(true);
@@ -585,6 +603,21 @@ function App() {
   useEffect(() => {
     setSubscriptionChecked(false);
     if (!db || !user) return;
+
+    // Fast path: anonymous users visiting /?checkout=direct have no subscription.
+    // Skip the Firestore round-trip and immediately unblock the paywall UI so the
+    // checkout dialog can open without delay.
+    if (isDirectCheckout && user.isAnonymous) {
+      // subscription state stays at its default (isPremium=false, status='none')
+      setSubscriptionChecked(true);
+      return;
+    }
+
+    // Safety net: if onSnapshot never fires (e.g. Firestore network issue),
+    // unblock the UI after 3 seconds so the paywall/app still renders.
+    const timeoutId = setTimeout(() => {
+      setSubscriptionChecked(true);
+    }, 3000);
 
     const appId = window.__app_id;
     const subscriptionRef = doc(db, `artifacts/${appId}/users/${user.uid}/metadata/subscription`);
@@ -701,8 +734,11 @@ function App() {
       }
     );
 
-    return unsubscribe;
-  }, [db, user]);
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
+  }, [db, user, isDirectCheckout]);
 
   // Handle Paddle checkout
   const handleUpgrade = () => {
@@ -1846,15 +1882,19 @@ function App() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-3">
                 <Icons.Crown />
               </div>
-              <h2 className="text-2xl font-bold mb-1">Get Full Access</h2>
-              <p className="text-white/80 text-sm">7-day free trial, then 500,000 ₫ every 6 months</p>
+              <h2 className="text-2xl font-bold mb-1">{isDirectCheckout ? 'Subscribe Now' : 'Get Full Access'}</h2>
+              <p className="text-white/80 text-sm">{isDirectCheckout ? 'Subscription starts immediately — no trial period' : '7-day free trial, then 500,000 ₫ every 6 months'}</p>
             </div>
 
             <div className="bg-card border border-card-border rounded-2xl p-6 shadow-xl">
               <div className="text-center mb-6">
-                <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
+                {isDirectCheckout ? (
+                  <div className="inline-block bg-orange-500/10 text-orange-600 dark:text-orange-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">SUBSCRIBE NOW — NO TRIAL NEEDED</div>
+                ) : (
+                  <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
+                )}
                 <div className="text-5xl font-bold text-foreground">500,000 ₫</div>
-                <div className="text-muted-foreground mt-1 text-sm">every 6 months after trial</div>
+                <div className="text-muted-foreground mt-1 text-sm">{isDirectCheckout ? 'every 6 months — subscription starts immediately' : 'every 6 months after trial'}</div>
                 <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
                 <div className="mt-3 text-base font-bold text-foreground">+10% VAT for purchases in Vietnam</div>
                 <div className="text-base font-bold">Total: <span className="text-red-500">550,000 ₫</span></div>
