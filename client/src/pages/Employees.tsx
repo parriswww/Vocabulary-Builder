@@ -211,12 +211,26 @@ export default function EmployeesPage() {
           <p className="text-base text-gray-500 mb-2 italic">
             Xây Dựng Vốn Từ Vựng Tiếng Anh Cho Nhân Viên — Thông Minh Hơn
           </p>
-          <p className="mt-5 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Vocabulary Builder gives every team member a proven, science-backed system to grow their professional English, track their own progress, and stay consistent — from any device, any time.
-          </p>
-          <p className="mt-1 text-sm text-gray-400 max-w-2xl mx-auto italic">
-            Vocabulary Builder cung cấp cho mỗi nhân viên một hệ thống học từ vựng tiếng Anh chuyên nghiệp dựa trên khoa học, theo dõi tiến độ và duy trì thói quen học tập — trên mọi thiết bị, mọi lúc.
-          </p>
+          <div className="mt-5 max-w-2xl mx-auto">
+            <p className="text-2xl font-semibold text-orange-500 mb-3">
+              Master the Language of Your Industry
+            </p>
+            <p className="text-sm text-amber-600 italic mb-4">
+              Thành Thạo Ngôn Ngữ Của Ngành Bạn
+            </p>
+            <p className="text-lg text-gray-600 leading-relaxed">
+              General English isn't enough for the boardroom. Whether you are in Accounting, Law, Tech, or Logistics, this app builds the specific vocabulary you need to close deals and lead teams. Using science-backed spaced repetition, we ensure you never forget a word again.
+            </p>
+            <p className="mt-1 text-sm text-gray-400 italic leading-relaxed">
+              Tiếng Anh thông thường chưa đủ cho phòng họp. Dù bạn làm trong lĩnh vực Kế toán, Luật, Công nghệ hay Logistics, ứng dụng này xây dựng vốn từ vựng chuyên ngành bạn cần để chốt hợp đồng và dẫn dắt đội nhóm. Với phương pháp lặp lại ngắt quãng dựa trên khoa học, chúng tôi đảm bảo bạn không bao giờ quên một từ nào.
+            </p>
+            <p className="mt-4 text-lg text-gray-600 leading-relaxed">
+              <span className="font-bold text-orange-500">Your Goal today:</span> Import your industry word list and master your first 10 "Power Words".
+            </p>
+            <p className="mt-1 text-sm text-gray-400 italic leading-relaxed">
+              <span className="font-bold text-amber-500">Mục tiêu hôm nay của bạn:</span> Nhập danh sách từ vựng chuyên ngành và thành thạo 10 "Từ Sức Mạnh" đầu tiên.
+            </p>
+          </div>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
