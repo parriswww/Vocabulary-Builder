@@ -292,6 +292,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clientToken,
       environment,
       priceId: process.env.PADDLE_PRICE_ID || '',
+      // Direct price (no trial) — used by the /employees page checkout flow
+      directPriceId: process.env.PADDLE_PRICE_ID_DIRECT || '',
     });
   });
 

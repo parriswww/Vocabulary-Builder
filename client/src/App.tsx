@@ -56,6 +56,7 @@ interface PaddleConfig {
   clientToken: string;
   environment: string;
   priceId: string;
+  directPriceId: string;
 }
 
 // Inline SVG Icons
@@ -219,9 +220,11 @@ function isValidEmailAddress(v: string) {
 function PaymentSection({
   onPaddleCheckout,
   checkoutLoading,
+  directPay,
 }: {
   onPaddleCheckout: () => void;
   checkoutLoading?: boolean;
+  directPay?: boolean;
 }) {
   const [qrEmail, setQrEmail] = useState('');
   const [touched, setTouched] = useState(false);
@@ -309,7 +312,11 @@ function PaymentSection({
         className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {checkoutLoading && <Icons.SpinnerSm />}
-        {checkoutLoading ? 'Loading…' : 'Start your 7-day free trial'}
+        {checkoutLoading
+          ? 'Loading…'
+          : directPay
+          ? 'Pay Now — Subscription Starts Immediately'
+          : 'Start your 7-day free trial'}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
@@ -326,11 +333,13 @@ function UpgradeDialog({
   onClose, 
   onUpgrade, 
   isReady,
+  directPay,
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onUpgrade: () => void; 
   isReady: boolean;
+  directPay?: boolean;
 }) {
   if (!isOpen) return null;
 
@@ -357,9 +366,15 @@ function UpgradeDialog({
         {/* Content */}
         <div className="p-6">
           <div className="text-center mb-6">
-            <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
+            {directPay ? (
+              <div className="inline-block bg-orange-500/10 text-orange-600 dark:text-orange-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">SUBSCRIBE NOW — NO TRIAL NEEDED</div>
+            ) : (
+              <div className="inline-block bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold px-3 py-1 rounded-full mb-3">7-DAY FREE TRIAL</div>
+            )}
             <div className="text-4xl font-bold text-foreground">500,000 ₫</div>
-            <div className="text-muted-foreground text-sm">every 6 months after trial</div>
+            <div className="text-muted-foreground text-sm">
+              {directPay ? 'every 6 months — subscription starts immediately' : 'every 6 months after trial'}
+            </div>
             <div className="text-muted-foreground/70 text-xs">($19 USD / 6 months)</div>
             <div className="mt-3 text-base font-bold text-foreground">+10% VAT for purchases in Vietnam</div>
             <div className="text-base font-bold">Total: <span className="text-red-500">550,000 ₫</span></div>
@@ -386,6 +401,7 @@ function UpgradeDialog({
           <PaymentSection
             onPaddleCheckout={onUpgrade}
             checkoutLoading={!isReady}
+            directPay={directPay}
           />
 
           <button
@@ -445,6 +461,7 @@ function App() {
   });
   const [paddleConfig, setPaddleConfig] = useState<PaddleConfig | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [isDirectCheckout, setIsDirectCheckout] = useState(false);
   const [paddleInitialized, setPaddleInitialized] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
@@ -547,6 +564,21 @@ function App() {
 
     initPaddle();
   }, []);
+
+  // Detect ?checkout=direct URL param — set flag and auto-open the upgrade dialog
+  // once Paddle is initialized, user is authenticated, and subscription state is known.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'direct') {
+      setIsDirectCheckout(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isDirectCheckout && paddleInitialized && user && subscriptionChecked) {
+      setShowUpgradeDialog(true);
+    }
+  }, [isDirectCheckout, paddleInitialized, user, subscriptionChecked]);
 
 
   // Load subscription status from Firestore + trial initialization
@@ -674,13 +706,16 @@ function App() {
 
   // Handle Paddle checkout
   const handleUpgrade = () => {
-    if (!paddleInitialized || !paddleConfig?.priceId || !user) {
+    const priceId = isDirectCheckout && paddleConfig?.directPriceId
+      ? paddleConfig.directPriceId
+      : paddleConfig?.priceId;
+    if (!paddleInitialized || !priceId || !user) {
       console.error('Paddle not ready or missing config');
       return;
     }
 
     window.Paddle?.Checkout.open({
-      items: [{ priceId: paddleConfig.priceId, quantity: 1 }],
+      items: [{ priceId, quantity: 1 }],
       customer: { email: user.email || '' },
       customData: { userId: user.uid },
       successCallback: async () => {
@@ -1846,6 +1881,7 @@ function App() {
               <PaymentSection
                 onPaddleCheckout={handleUpgrade}
                 checkoutLoading={!paddleInitialized}
+                directPay={isDirectCheckout}
               />
 
               <p className="text-xs text-muted-foreground text-center mt-1">
@@ -1972,6 +2008,7 @@ function App() {
         onClose={() => setShowUpgradeDialog(false)}
         onUpgrade={handleUpgrade}
         isReady={paddleInitialized}
+        directPay={isDirectCheckout}
       />
 
       {/* Help Dialog */}

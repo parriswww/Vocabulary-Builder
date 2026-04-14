@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import AdminPanel from "./AdminPanel";
+import EmployeesPage from "./pages/Employees";
 import "./index.css";
 
 // Handle Firebase permission errors gracefully
@@ -22,4 +23,14 @@ const isAdminRoute =
   window.location.pathname === '/admin/' ||
   params.get('admin') === 'true';
 
-createRoot(document.getElementById("root")!).render(isAdminRoute ? <AdminPanel /> : <App />);
+const isEmployeesRoute =
+  window.location.pathname === '/employees' ||
+  window.location.pathname === '/employees/';
+
+const rootComponent = isAdminRoute
+  ? <AdminPanel />
+  : isEmployeesRoute
+  ? <EmployeesPage />
+  : <App />;
+
+createRoot(document.getElementById("root")!).render(rootComponent);
