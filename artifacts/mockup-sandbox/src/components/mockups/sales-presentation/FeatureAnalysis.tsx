@@ -702,8 +702,8 @@ function S10() {
           </div>
           <div className="space-y-2.5 mb-4">
             {[
-              'Credit &amp; debit cards (Visa, Mastercard)',
-              'Apple Pay &amp; Google Pay',
+              'Credit & debit cards (Visa, Mastercard)',
+              'Apple Pay & Google Pay',
               'PayPal',
               'Global tax compliance (VAT handled by Paddle)',
               'Recurring billing with automatic renewal',
@@ -713,7 +713,7 @@ function S10() {
                 <div className="rounded-full bg-brand flex-shrink-0 flex items-center justify-center" style={{ width: 18, height: 18 }}>
                   <Check size={10} />
                 </div>
-                <span className="text-white/65" style={{ fontSize: '0.82vw' }} dangerouslySetInnerHTML={{ __html: item }} />
+                <span className="text-white/65" style={{ fontSize: '0.82vw' }}>{item}</span>
               </div>
             ))}
           </div>
@@ -789,9 +789,9 @@ function S11() {
 /* ── S12: Competitive Comparison Table ─────────────────────────── */
 type CellVal = 'yes' | 'partial' | 'no' | string;
 function Cell({ val }: { val: CellVal }) {
-  if (val === 'yes') return <span style={{ color: '#10B981', fontWeight: 700, fontSize: '1.1vw' }}>✓</span>;
-  if (val === 'partial') return <span style={{ color: '#FFC107', fontWeight: 700, fontSize: '1.1vw' }}>~</span>;
-  if (val === 'no') return <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '1.1vw' }}>✗</span>;
+  if (val === 'yes') return <span style={{ fontSize: '1.1vw' }}>✅</span>;
+  if (val === 'partial') return <span style={{ fontSize: '1.1vw' }}>⚠️</span>;
+  if (val === 'no') return <span style={{ fontSize: '1.1vw' }}>❌</span>;
   return <span style={{ fontSize: '0.75vw', color: '#374151', fontWeight: 600 }}>{val}</span>;
 }
 
@@ -852,9 +852,9 @@ function S12() {
           </div>
           {/* Legend */}
           <div className="flex items-center gap-6 border-t border-gray-100" style={{ padding: '1.2vh 2vw' }}>
-            {[{ sym: '✓', label: 'Full support', color: '#10B981' }, { sym: '~', label: 'Partial', color: '#FFC107' }, { sym: '✗', label: 'Not available', color: '#EF4444' }].map(({ sym, label, color }) => (
+            {[{ sym: '✅', label: 'Full support' }, { sym: '⚠️', label: 'Partial' }, { sym: '❌', label: 'Not available' }].map(({ sym, label }) => (
               <div key={label} className="flex items-center gap-1.5">
-                <span style={{ color, fontWeight: 700, fontSize: '0.9vw' }}>{sym}</span>
+                <span style={{ fontSize: '0.9vw' }}>{sym}</span>
                 <span className="text-muted" style={{ fontSize: '0.75vw' }}>{label}</span>
               </div>
             ))}
