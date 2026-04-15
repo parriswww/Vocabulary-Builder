@@ -829,7 +829,7 @@ function S12() {
       <div className="flex-1 flex flex-col" style={{ padding: '2.5vh 5vw', overflow: 'hidden' }}>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col">
           {/* Header row */}
-          <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', background: '#1A1A2E' }}>
+          <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', background: '#1A1A2E' }}>
             <div className="text-white/60 font-semibold" style={{ padding: '1.5vh 2vw', fontSize: '0.8vw' }}>Feature</div>
             {cols.map(({ key, label, highlight }) => (
               <div key={key} className="text-center font-black" style={{ padding: '1.5vh 0.5vw', fontSize: '0.8vw', background: highlight ? '#F05A28' : 'transparent', color: highlight ? 'white' : 'rgba(255,255,255,0.7)', whiteSpace: 'pre-line', lineHeight: 1.3 }}>
@@ -840,7 +840,7 @@ function S12() {
           {/* Data rows */}
           <div className="flex-1 flex flex-col">
             {rows.map((row, i) => (
-              <div key={row.feature} className="grid flex-1" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', background: i % 2 === 0 ? 'white' : '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
+              <div key={row.feature} className="grid flex-1" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', background: i % 2 === 0 ? 'white' : '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
                 <div className="text-navy font-semibold flex items-center" style={{ padding: '0 2vw', fontSize: '0.82vw' }}>{row.feature}</div>
                 {cols.map(({ key, highlight }) => (
                   <div key={key} className="flex items-center justify-center" style={{ background: highlight ? 'rgba(240,90,40,0.06)' : 'transparent' }}>
