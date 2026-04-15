@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "hZYGM42Uwq7GFsZ-E8i5u"
+uri = "file://downloads/VB-Feature-Analysis.pdf"
+type = "pdf"
+title = "Vocabulary Builder — Feature Analysis (14 slides)"
