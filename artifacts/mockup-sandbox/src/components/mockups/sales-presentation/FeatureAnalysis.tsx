@@ -177,8 +177,7 @@ function S04() {
           </div>
         </div>
         <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'linear-gradient(135deg, #0F3460 0%, #16213E 100%)', padding: '2.5vh 2.5vw' }}>
-          <div className="text-white font-black mb-2" style={{ fontSize: '1.2vw' }}>Daily Streak</div>
-          <div className="text-accent font-black mb-4" style={{ fontSize: '3.5vw' }}>5 Days</div>
+          <div className="text-white font-black mb-4" style={{ fontSize: '1.2vw' }}>Daily Streak</div>
           <div className="space-y-3">
             {streakItems.map(s => (
               <div key={s} className="flex items-center gap-3">
@@ -452,11 +451,11 @@ function S11() {
     { title: 'Progressive Loading', color: '#FFC107' },
   ];
   const details: Record<string, string> = {
-    'Mobile-First Design': 'Vertical navigation, touch-friendly tap targets. Optimised for 375px screens and up.',
-    'Dark Mode': 'Full theme-aware toggle. User preference saved to localStorage.',
-    'Responsive Layout': 'Phone · tablet · desktop — UI adapts for each breakpoint.',
+    'Mobile-First Design': 'Vertical navigation, touch-friendly tap targets, and a native app feel — all in the browser.',
+    'Dark Mode': 'Full dark and light theme support with user preference persistence.',
+    'Responsive Layout': 'Phone · tablet · desktop — the UI adapts for each breakpoint.',
     'No App Store Required': 'Runs entirely in the browser. Instant access from any device with a URL.',
-    'Progressive Loading': 'Splash screen + subscription check states. 3-second safety timeout fallback.',
+    'Progressive Loading': 'Branded splash screen with a smooth subscription check state before the app is revealed.',
   };
   return (
     <div className="slide-root bg-[#F8F9FA] flex flex-col">

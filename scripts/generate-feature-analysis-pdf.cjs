@@ -118,19 +118,6 @@ stats.forEach(([num, lbl], i) => {
   doc.fillColor(WHITE + '66').font('Helvetica').fontSize(7).text(lbl, bx, 255, { width: 95, align: 'center' });
 });
 
-// Right panel
-doc.rect(W - 220, 60, 192, 160).fill('#FFFFFF0A');
-doc.rect(W - 220, 60, 3, 160).fill(ORANGE);
-doc.fillColor(AMBER).font('Helvetica-Bold').fontSize(10).text('Why Vocabulary Builder?', W - 210, 72);
-[
-  ['2×', 'Faster recall with spaced repetition'],
-  ['500+', 'Words learned in 90 days on average'],
-  ['5 min', 'Daily practice to see real results'],
-].forEach(([stat, label], i) => {
-  const ry = 98 + i * 38;
-  doc.fillColor(AMBER).font('Helvetica-Bold').fontSize(14).text(stat, W - 210, ry, { width: 40 });
-  doc.fillColor(WHITE + '99').font('Helvetica').fontSize(8).text(label, W - 168, ry + 2, { width: 130 });
-});
 
 slideFooter();
 
