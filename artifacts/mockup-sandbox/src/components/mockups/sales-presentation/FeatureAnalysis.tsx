@@ -1,419 +1,413 @@
 import './_group.css';
 import { useState } from 'react';
 
-/* ── Chevron icons ──────────────────────────────────────────────── */
-const ChevL = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>;
-const ChevR = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>;
-const Tick = ({ c = 'white', sz = 12 }: { c?: string; sz?: number }) => (
-  <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-);
+const NAVY = '#1A1A2E';
+const ORANGE = '#F05A28';
+const AMBER = '#FFC107';
+const LGRAY = '#F8F9FA';
 
-/* ── Reusable pieces ────────────────────────────────────────────── */
-function Header({ title, num, bg = '#1A1A2E' }: { title: string; num: number; bg?: string }) {
+function Nav({ cur, total, onPrev, onNext, title }: { cur: number; total: number; onPrev: () => void; onNext: () => void; title: string }) {
   return (
-    <div className="flex items-center justify-between flex-shrink-0" style={{ padding: '2.5vh 5vw', background: bg }}>
-      <div className="text-white font-black leading-tight" style={{ fontSize: '2.4vw' }}>{title}</div>
-      <div className="text-white/15 font-black" style={{ fontSize: '5vw' }}>{String(num).padStart(2,'0')}</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', borderTop: '1px solid #333', padding: '0 20px', height: 44, flexShrink: 0, fontFamily: 'system-ui' }}>
+      <button onClick={onPrev} disabled={cur === 0} style={{ background: 'none', border: 'none', color: cur === 0 ? '#555' : '#fff', cursor: cur === 0 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}>← Prev</button>
+      <span style={{ color: '#888', fontSize: 12 }}>{title} &nbsp;|&nbsp; {cur + 1} / {total}</span>
+      <button onClick={onNext} disabled={cur === total - 1} style={{ background: 'none', border: 'none', color: cur === total - 1 ? '#555' : '#fff', cursor: cur === total - 1 ? 'default' : 'pointer', fontSize: 13, fontWeight: 600 }}>Next →</button>
     </div>
   );
 }
 
-function Footer() {
+function SlideShell({ children, bg = LGRAY }: { children: React.ReactNode; bg?: string }) {
+  return <div style={{ flex: 1, background: bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'system-ui' }}>{children}</div>;
+}
+
+function SlideHeader({ title, num, bg: bgColor = NAVY }: { title: string; num: number; bg?: string }) {
   return (
-    <div className="flex items-center justify-between border-t border-white/10 flex-shrink-0" style={{ padding: '1.2vh 5vw' }}>
-      <span className="text-white/30 text-xs">ace.apps.44@gmail.com</span>
-      <span className="text-white/30 text-xs">Vocabulary Builder — ACE-Apps</span>
+    <div style={{ background: bgColor, padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ borderTop: `3px solid ${ORANGE}`, paddingTop: 6, color: '#fff', fontWeight: 800, fontSize: 18 }}>{title}</div>
+      <div style={{ color: 'rgba(255,255,255,0.15)', fontWeight: 900, fontSize: 36 }}>{String(num).padStart(2, '0')}</div>
     </div>
   );
 }
 
-function Row({ label, detail, color = '#F05A28' }: { label: string; detail?: string; color?: string }) {
+function SlideFooter() {
+  return <div style={{ borderTop: '1px solid #ddd', padding: '6px 32px', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+    <span style={{ color: '#aaa', fontSize: 11 }}>ace.apps.44@gmail.com</span>
+    <span style={{ color: '#aaa', fontSize: 11 }}>Vocabulary Builder — ACE-Apps</span>
+  </div>;
+}
+
+function Card({ title, children, accent = ORANGE, flex }: { title?: string; children: React.ReactNode; accent?: string; flex?: number }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl bg-gray-50" style={{ padding: '1.2vh 1.5vw' }}>
-      <div className="rounded-full flex-shrink-0 flex items-center justify-center" style={{ marginTop: 2, background: color, width: 18, height: 18 }}>
-        <Tick sz={10} />
-      </div>
-      <div>
-        <span className="text-gray-800 font-bold" style={{ fontSize: '0.9vw' }}>{label}</span>
-        {detail ? <span className="text-gray-500" style={{ fontSize: '0.84vw' }}>{'  '}{detail}</span> : null}
-      </div>
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex }}>
+      {title && <div style={{ background: NAVY, color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', borderBottom: `3px solid ${accent}` }}>{title}</div>}
+      <div style={{ padding: 16, flex: 1 }}>{children}</div>
     </div>
   );
 }
 
-/* ── S01: Cover ─────────────────────────────────────────────────── */
+function BulletList({ items, color = ORANGE }: { items: string[]; color?: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {items.map(item => (
+        <div key={item} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, marginTop: 5, flexShrink: 0 }} />
+          <span style={{ color: '#374151', fontSize: 13, lineHeight: 1.5 }}>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Slides ─────────────────────────────────────────────────────── */
+
 function S01() {
   return (
-    <div className="slide-root flex flex-col" style={{ background: 'linear-gradient(135deg, #1A1A2E 0%, #16213E 100%)' }}>
-      <div className="h-1.5 bg-brand w-full flex-shrink-0" />
-      <div className="flex-1 flex flex-col items-center justify-center" style={{ padding: '5vh 8vw', textAlign: 'center' }}>
-        <h1 className="text-white font-black leading-tight" style={{ fontSize: '5vw' }}>
-          Vocabulary Builder<br />
-          <span className="text-brand">Full Feature Analysis</span>
-        </h1>
-        <p className="text-white/50 italic mt-5" style={{ fontSize: '1.4vw' }}>
-          A technical &amp; competitive deep-dive
-        </p>
-        <div className="flex gap-4 mt-8 flex-wrap justify-center">
+    <SlideShell bg={NAVY}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 60px', textAlign: 'center' }}>
+        <div style={{ color: ORANGE, fontWeight: 700, fontSize: 13, letterSpacing: 3, marginBottom: 16 }}>ACE-APPS</div>
+        <div style={{ color: '#fff', fontWeight: 900, fontSize: 46, lineHeight: 1.1, marginBottom: 12 }}>Vocabulary Builder</div>
+        <div style={{ color: ORANGE, fontWeight: 700, fontSize: 28, marginBottom: 20 }}>Full Feature Analysis</div>
+        <div style={{ color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', fontSize: 15, marginBottom: 36 }}>A technical &amp; competitive deep-dive</div>
+        <div style={{ display: 'flex', gap: 12 }}>
           {['Science-Backed', 'B2B-Ready', 'Vietnam-Focused'].map(tag => (
-            <span key={tag} className="border border-brand/50 text-brand font-semibold px-4 py-1.5 rounded-full" style={{ fontSize: '0.9vw' }}>{tag}</span>
+            <div key={tag} style={{ border: `1px solid ${ORANGE}`, color: ORANGE, fontWeight: 600, fontSize: 12, padding: '5px 14px', borderRadius: 20 }}>{tag}</div>
           ))}
         </div>
       </div>
-      <Footer />
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S02: SM-2 Algorithm ────────────────────────────────────────── */
 function S02() {
-  const vars = [
-    { title: 'Ease Factor', value: '2.5', sub: 'Starting value', desc: 'Starts at 2.5. Multiplier applied to the review interval after each recall. Increases with strong recall, decreases with poor recall.' },
-    { title: 'Review Interval', value: 'Days', sub: 'Days until next review', desc: 'Number of days before the word is shown again. Grows after each successful recall.' },
-    { title: 'Review Count', value: 'N+', sub: 'Per word', desc: 'The number of times a word has been reviewed. Combined with accuracy to determine mastery level promotion.' },
-  ];
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Spaced Repetition System (SM-2 Algorithm)" num={2} />
-      <div className="flex-1 flex flex-col justify-center" style={{ padding: '2vh 5vw' }}>
-        <p className="text-gray-500 mb-4" style={{ fontSize: '0.88vw' }}>
-          This is the same algorithm used by Anki, widely considered the gold standard in memory science. The app tracks three per-word variables:
+    <SlideShell>
+      <SlideHeader title="The SM-2 Spaced Repetition Engine" num={2} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <p style={{ color: '#555', fontSize: 13, margin: 0 }}>
+          The same algorithm used by Anki — the gold standard in memory science. The app tracks three per-word variables:
         </p>
-        <div className="grid grid-cols-3 gap-5 mb-5">
-          {vars.map(({ title, value, sub, desc }) => (
-            <div key={title} className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ padding: '2.5vh 2vw' }}>
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-navy font-black" style={{ fontSize: '1.1vw' }}>{title}</div>
-                  <div className="text-gray-400 text-xs mt-0.5">{sub}</div>
-                </div>
-                <div className="text-brand font-black" style={{ fontSize: '2vw' }}>{value}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, flex: 1 }}>
+          {[
+            { title: 'Ease Factor', val: '2.5', desc: 'Starts at 2.5. Multiplier applied to the interval after each recall. Increases with strong recall, decreases with poor recall.' },
+            { title: 'Review Interval', val: 'Days', desc: 'Days before the word is shown again. Grows exponentially with each successful recall.' },
+            { title: 'Review Count', val: 'N+', desc: 'Times a word has been reviewed. Combined with accuracy to determine mastery level promotion.' },
+          ].map(({ title, val, desc }) => (
+            <Card key={title} accent={ORANGE}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ color: NAVY, fontWeight: 800, fontSize: 14 }}>{title}</div>
+                <div style={{ color: ORANGE, fontWeight: 900, fontSize: 28 }}>{val}</div>
               </div>
-              <div className="bg-gray-50 rounded-xl flex-1" style={{ padding: '1.2vh 1.2vw' }}>
-                <p className="text-gray-600" style={{ fontSize: '0.8vw', lineHeight: 1.6 }}>{desc}</p>
+              <div style={{ background: LGRAY, borderRadius: 8, padding: '10px 12px' }}>
+                <p style={{ color: '#555', fontSize: 12, margin: 0, lineHeight: 1.6 }}>{desc}</p>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
-        <div className="bg-navy rounded-2xl" style={{ padding: '2vh 3vw' }}>
-          <p className="text-white font-semibold text-center" style={{ fontSize: '1vw' }}>
-            Poor recall <span className="text-brand">resets the interval</span>; strong recall <span className="text-accent">extends it exponentially</span> — optimizing long-term retention while minimizing study time.
-          </p>
+        <div style={{ background: NAVY, borderRadius: 10, padding: '12px 20px', textAlign: 'center' }}>
+          <span style={{ color: '#fff', fontSize: 13 }}>Poor recall <strong style={{ color: ORANGE }}>resets the interval</strong>; strong recall <strong style={{ color: AMBER }}>extends it exponentially</strong> — optimizing long-term retention while minimizing study time.</span>
         </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S03: Mastery Levels + Flashcard Mode ───────────────────────── */
 function S03() {
-  const levels = [
-    { name: 'Learning', color: '#6B7280', req: 'Default for new words' },
-    { name: 'Reviewing', color: '#F05A28', req: 'Reached after 3+ reviews with ≥70% accuracy' },
-    { name: 'Mastered', color: '#10B981', req: 'Reached after 10+ reviews with ≥90% accuracy and a ≥30-day review interval' },
-  ];
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Three Mastery Levels & Flashcard Mode" num={3} bg="#F05A28" />
-      <div className="flex-1 flex gap-6" style={{ padding: '2.5vh 5vw' }}>
-        <div className="flex flex-col justify-center gap-4" style={{ width: '48vw' }}>
-          {levels.map(({ name, color, req }) => (
-            <div key={name} className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4" style={{ padding: '2vh 2.5vw' }}>
-              <div className="rounded-full flex-shrink-0" style={{ background: color, width: 14, height: 14 }} />
+    <SlideShell>
+      <SlideHeader title="Three Mastery Levels & Flashcard Mode" num={3} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '48%' }}>
+          {[
+            { name: 'Learning', color: '#6B7280', req: 'Default for new words' },
+            { name: 'Reviewing', color: ORANGE, req: 'Reached after 3+ reviews with ≥70% accuracy' },
+            { name: 'Mastered', color: '#10B981', req: 'Reached after 10+ reviews with ≥90% accuracy and a ≥30-day review interval' },
+          ].map(({ name, color, req }) => (
+            <div key={name} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0 }} />
               <div>
-                <div className="font-black" style={{ color, fontSize: '1.15vw' }}>{name}</div>
-                <div className="text-gray-500 mt-0.5" style={{ fontSize: '0.82vw' }}>{req}</div>
+                <div style={{ fontWeight: 800, color, fontSize: 15 }}>{name}</div>
+                <div style={{ color: '#6B7280', fontSize: 12, marginTop: 2 }}>{req}</div>
               </div>
             </div>
           ))}
         </div>
-        <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'linear-gradient(135deg, #16213E 0%, #1A1A2E 100%)', padding: '2.5vh 2.5vw' }}>
-          <div className="text-brand font-bold uppercase tracking-wider mb-4" style={{ fontSize: '0.78vw' }}>Flashcard Mode</div>
-          <p className="text-white/70 mb-4" style={{ fontSize: '0.88vw', lineHeight: 1.7 }}>
+        <div style={{ flex: 1, background: NAVY, borderRadius: 12, padding: '20px 24px', borderLeft: `4px solid ${ORANGE}` }}>
+          <div style={{ color: ORANGE, fontWeight: 700, fontSize: 11, letterSpacing: 2, marginBottom: 12 }}>FLASHCARD MODE</div>
+          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.8, margin: 0 }}>
             Front/back card review with audio pronunciation (fetched from the dictionary API) and example sentences. Integrated directly with the SM-2 engine so every flip updates that word's review schedule.
           </p>
         </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S04: Quiz Mode + Daily Streak ─────────────────────────────── */
 function S04() {
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Quiz Mode & Daily Streak Tracking" num={4} />
-      <div className="flex-1 flex gap-6" style={{ padding: '2.5vh 5vw' }}>
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '2.5vh 2.5vw' }}>
-          <div className="text-navy font-black mb-3" style={{ fontSize: '1.2vw' }}>Quiz Mode</div>
-          <p className="text-gray-600 leading-relaxed" style={{ fontSize: '0.88vw', lineHeight: 1.8 }}>
+    <SlideShell>
+      <SlideHeader title="Quiz Mode & Daily Streak Tracking" num={4} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 24 }}>
+        <Card title="Quiz Mode" flex={1}>
+          <p style={{ color: '#374151', fontSize: 13, lineHeight: 1.8, margin: 0 }}>
             Multiple-choice format. Up to 10 words per session drawn from the user's active list. Shows the definition, user selects the correct word from 4 options. Tracks score and percentage at the end.
           </p>
-        </div>
-        <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'linear-gradient(135deg, #0F3460 0%, #16213E 100%)', padding: '2.5vh 2.5vw' }}>
-          <div className="text-white font-black mb-3" style={{ fontSize: '1.2vw' }}>Daily Streak Tracking</div>
-          <p className="text-white/70 leading-relaxed" style={{ fontSize: '0.88vw', lineHeight: 1.8 }}>
-            Day-over-day consistency is measured and displayed. The streak increments for consecutive calendar days of activity and resets if a day is missed — a proven motivational mechanic.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── S05: Word & Content Management ────────────────────────────── */
-function S05() {
-  return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Word & Content Management" num={5} bg="#F05A28" />
-      <div className="flex-1 flex flex-col" style={{ padding: '2vh 5vw', gap: '1.5vh' }}>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1" style={{ padding: '2vh 2.5vw' }}>
-          <div className="text-navy font-black mb-2" style={{ fontSize: '1.05vw' }}>Manual Word Entry</div>
-          <div className="space-y-2 mb-2">
-            <Row label="Word, definition, example sentence, and custom tags — all user-controlled" color="#1A1A2E" />
-            <Row label="Words can be edited or deleted at any time" color="#1A1A2E" />
+        </Card>
+        <div style={{ flex: 1, background: NAVY, borderRadius: 12, border: '1px solid #333', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#0F3460', color: AMBER, fontWeight: 700, fontSize: 12, padding: '8px 16px', borderBottom: `3px solid ${AMBER}` }}>Daily Streak Tracking</div>
+          <div style={{ padding: 16, flex: 1 }}>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.8, margin: 0 }}>
+              Day-over-day consistency is measured and displayed. The streak increments for consecutive calendar days of activity and resets if a day is missed — a proven motivational mechanic.
+            </p>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1" style={{ padding: '2vh 2.5vw' }}>
-          <div className="text-navy font-black mb-2" style={{ fontSize: '1.05vw' }}>Search &amp; Filter</div>
-          <p className="text-gray-600" style={{ fontSize: '0.86vw' }}>Live search across word and definition fields. Filterable by mastery level and tags.</p>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1" style={{ padding: '2vh 2.5vw' }}>
-          <div className="text-navy font-black mb-2" style={{ fontSize: '1.05vw' }}>Tag System</div>
-          <p className="text-gray-600" style={{ fontSize: '0.86vw' }}>Custom tags per word (or per import batch) for organizing vocabulary by topic, unit, or source.</p>
-        </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S06: Automatic Dictionary Lookup ──────────────────────────── */
+function S05() {
+  return (
+    <SlideShell>
+      <SlideHeader title="Word & Content Management" num={5} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Card title="Manual Word Entry">
+          <BulletList items={[
+            'Word, definition, example sentence, and custom tags — all user-controlled',
+            'Words can be edited or deleted at any time',
+          ]} color={NAVY} />
+        </Card>
+        <Card title="Search & Filter">
+          <p style={{ color: '#374151', fontSize: 13, margin: 0 }}>Live search across word and definition fields. Filterable by mastery level and tags.</p>
+        </Card>
+        <Card title="Tag System">
+          <p style={{ color: '#374151', fontSize: 13, margin: 0 }}>Custom tags per word (or per import batch) for organizing vocabulary by topic, unit, or source.</p>
+        </Card>
+      </div>
+      <SlideFooter />
+    </SlideShell>
+  );
+}
+
 function S06() {
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Automatic Dictionary Lookup" num={6} />
-      <div className="flex-1 flex items-center" style={{ padding: '2.5vh 5vw' }}>
-        <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '3vh 4vw' }}>
-          <p className="text-gray-700 leading-relaxed" style={{ fontSize: '1.05vw', lineHeight: 1.85 }}>
+    <SlideShell bg={NAVY}>
+      <SlideHeader title="Automatic Dictionary Lookup" num={6} bg="#0F3460" />
+      <div style={{ flex: 1, padding: '24px 32px', display: 'flex', alignItems: 'center' }}>
+        <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, border: `1px solid rgba(240,90,40,0.35)`, padding: '28px 36px', width: '100%' }}>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.85, margin: 0 }}>
             When a user adds a word, the app queries a dictionary API (proxied through the backend) to auto-populate{' '}
-            <span className="text-navy font-bold">definitions, example sentences, phonetic pronunciation, and audio</span>.
-            {' '}The <span className="text-brand font-bold">Datamuse API</span> is also queried for{' '}
-            <span className="text-navy font-bold">synonyms and antonyms</span>.
-            {' '}Users can also manually trigger the{' '}
-            <span className="text-brand font-bold">"Word Lookup" view</span> to search any word before adding it.
+            <strong style={{ color: AMBER }}>definitions, example sentences, phonetic pronunciation, and audio</strong>.
+            {' '}The <strong style={{ color: ORANGE }}>Datamuse API</strong> is also queried for{' '}
+            <strong style={{ color: AMBER }}>synonyms and antonyms</strong>.
+            {' '}Users can also manually trigger the <strong style={{ color: ORANGE }}>"Word Lookup" view</strong> to search any word before adding it.
           </p>
         </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S07: CSV Bulk Import ───────────────────────────────────────── */
 function S07() {
-  const bullets = [
+  const items = [
     'Auto-detects whether a header row is present',
-    'Recognizes common header variations ("term", "vocab", "meaning", "phrase", etc.)',
+    "Recognizes common header variations (\"term\", \"vocab\", \"meaning\", \"phrase\", etc.)",
     "Skips duplicates (already in the user's list)",
     'Skips rows missing word or definition',
     'Shows a preview with counts (valid, duplicates, invalid) before committing',
     'Lets users apply a tag to the entire import batch',
   ];
   return (
-    <div className="slide-root flex flex-col" style={{ background: 'linear-gradient(160deg, #1A1A2E 0%, #16213E 100%)' }}>
-      <Header title="CSV Bulk Import" num={7} bg="#F05A28" />
-      <div className="flex-1 flex flex-col" style={{ padding: '2vh 5vw' }}>
-        <p className="text-white/60 mb-4" style={{ fontSize: '0.88vw' }}>Users upload a file with columns: word, definition, sentence. The app:</p>
-        <div className="grid grid-cols-2 gap-4 flex-1">
-          {bullets.map((b, i) => (
-            <div key={b} className="rounded-2xl flex items-start gap-3" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(240,90,40,0.3)', padding: '2vh 2vw' }}>
-              <div className="rounded-xl bg-brand flex-shrink-0 flex items-center justify-center text-white font-black" style={{ width: 32, height: 32, fontSize: '0.85vw', flexShrink: 0 }}>{i + 1}</div>
-              <span className="text-white/80" style={{ fontSize: '0.86vw', lineHeight: 1.6 }}>{b}</span>
+    <SlideShell bg={NAVY}>
+      <SlideHeader title="CSV Bulk Import — The Enterprise Accelerator" num={7} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: 0 }}>Users upload a file with columns: word, definition, sentence. The app:</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1 }}>
+          {items.map((item, i) => (
+            <div key={item} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(240,90,40,0.3)', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ background: ORANGE, color: '#fff', fontWeight: 800, fontSize: 13, width: 26, height: 26, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
+              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, lineHeight: 1.5 }}>{item}</span>
             </div>
           ))}
         </div>
-        <div className="text-white/80 text-center font-semibold border-t border-white/10 mt-4" style={{ paddingTop: '1.5vh', fontSize: '0.9vw' }}>
-          This is the key feature for businesses who want to load industry-specific word lists.
+        <div style={{ background: ORANGE, borderRadius: 8, padding: '10px 20px', textAlign: 'center' }}>
+          <span style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>This is the key feature for businesses who want to load industry-specific word lists.</span>
         </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S08: Data & Sync ───────────────────────────────────────────── */
 function S08() {
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Data & Sync" num={8} />
-      <div className="flex-1 flex gap-6" style={{ padding: '2.5vh 5vw' }}>
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '2.5vh 2.5vw' }}>
-          <div className="text-navy font-black mb-3" style={{ fontSize: '1.1vw' }}>Cloud Storage — Firebase Firestore</div>
-          <p className="text-gray-500 mb-3" style={{ fontSize: '0.82vw' }}>Every word and its entire review history is stored in Firebase's real-time NoSQL cloud database, tied to the authenticated user's UID. This means:</p>
-          <div className="space-y-2">
-            <Row label="Words are synced in real time across every device the user logs into" color="#1A1A2E" />
-            <Row label="No manual backup needed" color="#1A1A2E" />
-            <Row label="Data persists if the user reinstalls the app or switches phones/computers" color="#1A1A2E" />
+    <SlideShell>
+      <SlideHeader title="Data & Sync" num={8} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 24 }}>
+        <Card title="Cloud Storage — Firebase Firestore" flex={1}>
+          <p style={{ color: '#555', fontSize: 13, marginBottom: 12 }}>Every word and review history stored in Firebase's real-time NoSQL cloud database, tied to the authenticated user's UID:</p>
+          <BulletList color={NAVY} items={[
+            'Words are synced in real time across every device the user logs into',
+            'No manual backup needed',
+            'Data persists if the user reinstalls or switches devices',
+          ]} />
+        </Card>
+        <div style={{ flex: 1, background: NAVY, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#0F3460', color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', borderBottom: `3px solid ${ORANGE}` }}>Subscriber Registry — PostgreSQL</div>
+          <div style={{ padding: 16, flex: 1 }}>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.8, margin: 0 }}>
+              A separate server-side database (PostgreSQL) maintains subscription status, trial dates, admin grants, and payment records. This is used by the admin panel and survives server restarts and redeployments — unlike file-based storage that some competing apps use.
+            </p>
           </div>
         </div>
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '2.5vh 2.5vw' }}>
-          <div className="text-navy font-black mb-3" style={{ fontSize: '1.1vw' }}>Subscriber Registry — PostgreSQL</div>
-          <p className="text-gray-600 leading-relaxed" style={{ fontSize: '0.88vw', lineHeight: 1.8 }}>
-            A separate server-side database (PostgreSQL) maintains subscription status, trial dates, admin grants, and payment records. This is used by the admin panel and survives server restarts and redeployments — unlike file-based storage that some competing apps use.
-          </p>
-        </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S09: Authentication + Security ────────────────────────────── */
 function S09() {
-  const authItems = [
-    { label: 'Email + Password', detail: 'signup and login' },
-    { label: 'Password reset', detail: 'via email' },
-    { label: 'Anonymous sign-in', detail: 'for the direct checkout flow (no friction for purchasers)' },
-    { label: 'Session persistence', detail: '— users stay logged in across browser sessions' },
-  ];
-  const secItems = [
-    'Helmet.js HTTP security headers',
-    'API rate limiting',
-    'Webhook signature verification (Paddle webhooks are validated before processing)',
-    "Firebase Security Rules restrict each user's data to their own UID",
-    'Admin password stored as an environment secret, never hardcoded',
-  ];
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Authentication & Security" num={9} bg="#F05A28" />
-      <div className="flex-1 flex gap-6" style={{ padding: '2.5vh 5vw' }}>
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '2.5vh 2.5vw' }}>
-          <div className="text-navy font-black mb-3" style={{ fontSize: '1.1vw' }}>Authentication</div>
-          <div className="space-y-2">
-            {authItems.map(({ label, detail }) => (
-              <Row key={label} label={label} detail={detail} color="#1A1A2E" />
-            ))}
-          </div>
-        </div>
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100" style={{ padding: '2.5vh 2.5vw' }}>
-          <div className="text-navy font-black mb-3" style={{ fontSize: '1.1vw' }}>Security</div>
-          <div className="space-y-2">
-            {secItems.map(s => <Row key={s} label={s} />)}
-          </div>
-        </div>
+    <SlideShell>
+      <SlideHeader title="Authentication & Security" num={9} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 24 }}>
+        <Card title="Authentication" flex={1}>
+          <BulletList color={NAVY} items={[
+            'Email + Password signup and login',
+            'Password reset via email',
+            'Anonymous sign-in for the direct checkout flow (no friction for purchasers)',
+            'Session persistence — users stay logged in across browser sessions',
+          ]} />
+        </Card>
+        <Card title="Security" flex={1}>
+          <BulletList items={[
+            'Helmet.js HTTP security headers',
+            'API rate limiting',
+            'Webhook signature verification (Paddle webhooks are validated before processing)',
+            "Firebase Security Rules restrict each user's data to their own UID",
+            'Admin password stored as an environment secret, never hardcoded',
+          ]} />
+        </Card>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S10: Payments & Business Model ────────────────────────────── */
 function S10() {
   return (
-    <div className="slide-root flex flex-col" style={{ background: 'linear-gradient(160deg, #1A1A2E 0%, #16213E 100%)' }}>
-      <Header title="Payments & Business Model" num={10} bg="#F05A28" />
-      <div className="flex-1 flex gap-4" style={{ padding: '2.5vh 5vw' }}>
-        {/* Pricing */}
-        <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(240,90,40,0.4)', padding: '2.5vh 2vw' }}>
-          <div className="text-brand font-bold uppercase tracking-wider mb-3" style={{ fontSize: '0.75vw' }}>Pricing</div>
-          <div className="text-accent font-black text-center mb-1" style={{ fontSize: '2.6vw' }}>500,000 ₫</div>
-          <div className="text-white/50 text-center mb-4" style={{ fontSize: '0.78vw' }}>per 6 months · ≈$19 USD</div>
-          <div className="text-white/70 mb-2" style={{ fontSize: '0.82vw' }}>+ 10% VAT for Vietnamese purchasers. Total: 550,000 ₫.</div>
-          <div className="rounded-xl bg-white/5 mt-2" style={{ padding: '1.2vh 1.2vw' }}>
-            <p className="text-white/80 font-semibold mb-1" style={{ fontSize: '0.82vw' }}>7-Day Free Trial</p>
-            <p className="text-white/55" style={{ fontSize: '0.76vw' }}>Standard access flow. Full features from day one.</p>
-          </div>
-          <div className="rounded-xl bg-white/5 mt-2" style={{ padding: '1.2vh 1.2vw' }}>
-            <p className="text-white/80 font-semibold mb-1" style={{ fontSize: '0.82vw' }}>Direct Subscription</p>
-            <p className="text-white/55" style={{ fontSize: '0.76vw' }}>"Skip Trial" flow for businesses and employees who want to pay immediately without a trial.</p>
-          </div>
-        </div>
-        {/* Paddle */}
-        <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', padding: '2.5vh 2vw' }}>
-          <div className="text-white/50 font-bold uppercase tracking-wider mb-3" style={{ fontSize: '0.75vw' }}>Paddle (Global Payment Processor)</div>
-          <p className="text-white/70 leading-relaxed" style={{ fontSize: '0.88vw', lineHeight: 1.8 }}>
-            Handles credit/debit cards, Apple Pay, Google Pay, and PayPal. Paddle manages tax compliance, recurring billing, cancellations, and refunds globally.
-          </p>
-        </div>
-        {/* VietQR */}
-        <div className="flex-1 rounded-2xl flex flex-col" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,193,7,0.35)', padding: '2.5vh 2vw' }}>
-          <div className="text-accent font-bold uppercase tracking-wider mb-3" style={{ fontSize: '0.75vw' }}>VietQR / Techcombank</div>
-          <p className="text-white/70 leading-relaxed" style={{ fontSize: '0.88vw', lineHeight: 1.8 }}>
-            Local Vietnamese bank transfer option. The user enters their email, the QR code is revealed, they transfer via any Vietnamese banking app, and the admin activates the account. This is critical for the Vietnamese B2B market where many businesses still prefer bank transfer over card.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── S11: UI & User Experience ─────────────────────────────────── */
-function S11() {
-  const cards = [
-    { title: 'Mobile-First Design', color: '#F05A28', desc: 'Built specifically to feel like a native mobile app in the browser. Vertical navigation, touch-friendly card sizes, 3D button press effects.' },
-    { title: 'Dark Mode', color: '#5B6CF0', desc: 'Full dark/light mode toggle with preference saved to the browser. Every color, border, and gradient is theme-aware.' },
-    { title: 'Responsive Layout', color: '#9B5CF6', desc: 'Works on phone, tablet, and desktop browsers without a separate mobile app.' },
-    { title: 'No App Store Required', color: '#10B981', desc: 'Runs entirely in the browser — no installation, no App Store approval, no update process for the user.' },
-    { title: 'Progressive Loading', color: '#FFC107', desc: 'Splash screen while Firebase initializes. "Checking access…" screen while subscription loads. Prevents blank/broken states.' },
-  ];
-  return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="UI & User Experience" num={11} />
-      <div className="flex-1 flex gap-4 items-stretch" style={{ padding: '2.5vh 5vw' }}>
-        {cards.map(({ title, color, desc }) => (
-          <div key={title} className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col" style={{ padding: '2vh 1.5vw' }}>
-            <div className="rounded-xl flex-shrink-0 mb-4" style={{ background: color, width: 36, height: 36 }} />
-            <div className="text-navy font-black mb-2" style={{ fontSize: '0.9vw' }}>{title}</div>
-            <div className="text-gray-500 flex-1" style={{ fontSize: '0.78vw', lineHeight: 1.65 }}>{desc}</div>
+    <SlideShell bg={NAVY}>
+      <SlideHeader title="Payments & Business Model" num={10} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 16 }}>
+        {[
+          {
+            label: 'PRICING',
+            accent: ORANGE,
+            content: (
+              <div>
+                <div style={{ color: AMBER, fontWeight: 900, fontSize: 28, textAlign: 'center', marginBottom: 4 }}>500,000 ₫</div>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginBottom: 16 }}>per 6 months · ≈$19 USD · + 10% VAT = 550,000 ₫</div>
+                <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, marginBottom: 4 }}>7-Day Free Trial</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 14, lineHeight: 1.5 }}>Standard access flow. Full features from day one.</div>
+                <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, marginBottom: 4 }}>Direct Subscription</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.5 }}>"Skip Trial" flow for businesses who want to pay immediately.</div>
+              </div>
+            ),
+          },
+          {
+            label: 'PADDLE',
+            accent: '#5B6CF0',
+            content: <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.8, margin: 0 }}>Handles credit/debit cards, Apple Pay, Google Pay, and PayPal. Paddle manages tax compliance, recurring billing, cancellations, and refunds globally.</p>,
+          },
+          {
+            label: 'VIETQR / TECHCOMBANK',
+            accent: AMBER,
+            content: <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.8, margin: 0 }}>Local Vietnamese bank transfer option. The user enters their email, the QR code is revealed, they transfer via any Vietnamese banking app, and the admin activates the account. Critical for the Vietnamese B2B market.</p>,
+          },
+        ].map(({ label, accent, content }) => (
+          <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: 12, borderTop: `4px solid ${accent}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ color: accent, fontWeight: 700, fontSize: 11, letterSpacing: 2, padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{label}</div>
+            <div style={{ padding: 16, flex: 1 }}>{content}</div>
           </div>
         ))}
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S12: Competitive Comparison Table ─────────────────────────── */
-function S12() {
-  const cols = [
-    { key: 'vb',       label: 'Vocabulary\nBuilder', highlight: true  },
-    { key: 'anki',     label: 'Anki',                highlight: false },
-    { key: 'quizlet',  label: 'Quizlet',             highlight: false },
-    { key: 'duolingo', label: 'Duolingo',            highlight: false },
-    { key: 'memrise',  label: 'Memrise',             highlight: false },
-  ];
-  type Row = { feature: string; vb: string; anki: string; quizlet: string; duolingo: string; memrise: string };
-  const rows: Row[] = [
-    { feature: 'SM-2 Spaced Repetition',       vb:'✅ Full',        anki:'✅ Full',        quizlet:'❌ Basic',        duolingo:'❌ Gamified',  memrise:'✅ Partial'   },
-    { feature: 'CSV Industry Word Import',      vb:'✅ Yes',         anki:'✅ (complex)',   quizlet:'✅ (paid tier)',  duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Auto Dictionary + Audio',       vb:'✅ Yes',         anki:'❌ Manual',      quizlet:'✅ Limited',     duolingo:'✅ Built-in',  memrise:'✅ Limited'   },
-    { feature: 'Synonyms / Antonyms',           vb:'✅ Yes',         anki:'❌',             quizlet:'❌',             duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Cross-Device Cloud Sync',       vb:'✅ Realtime',    anki:'⚠️ AnkiWeb\n(paid)',quizlet:'✅ Yes',    duolingo:'✅ Yes',       memrise:'✅ Yes'       },
-    { feature: 'Works in Browser (no install)', vb:'✅ Yes',         anki:'❌ App required', quizlet:'✅ Yes',        duolingo:'✅ Yes',       memrise:'✅ Yes'       },
-    { feature: 'Dark Mode',                     vb:'✅ Yes',         anki:'✅ Yes',         quizlet:'✅ Yes',         duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Vietnamese Bank Payment',       vb:'✅ VietQR',      anki:'❌',             quizlet:'❌',             duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Admin Override / B2B Console',  vb:'✅ Full panel',  anki:'❌',             quizlet:'❌',             duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Industry-Specific Focus',       vb:'✅ Designed\nfor it', anki:'⚠️ General', quizlet:'⚠️ General', duolingo:'❌ Consumer\nonly', memrise:'⚠️ General' },
-    { feature: 'One-Time Bulk Team Setup',      vb:'✅ CSV batch',   anki:'⚠️ Manual',     quizlet:'⚠️ Limited',    duolingo:'❌',           memrise:'❌'           },
-    { feature: 'Price (6 months)',              vb:'~$19',           anki:'Free / $25/yr\n(sync)', quizlet:'$35.99/yr', duolingo:'$79.99/yr', memrise:'$59.99/yr' },
+function S11() {
+  const features = [
+    { title: 'Mobile-First Design', desc: 'Built specifically to feel like a native mobile app in the browser. Vertical navigation, touch-friendly card sizes, 3D button press effects.', color: ORANGE },
+    { title: 'Dark Mode', desc: 'Full dark/light mode toggle with preference saved to the browser. Every color, border, and gradient is theme-aware.', color: '#5B6CF0' },
+    { title: 'Responsive Layout', desc: 'Works on phone, tablet, and desktop browsers without a separate mobile app.', color: '#9B5CF6' },
+    { title: 'No App Store Required', desc: 'Runs entirely in the browser — no installation, no App Store approval, no update process for the user.', color: '#10B981' },
+    { title: 'Progressive Loading', desc: 'Splash screen while Firebase initializes. "Checking access…" screen while subscription loads. Prevents blank/broken states.', color: AMBER },
   ];
   return (
-    <div className="slide-root bg-gray-50 flex flex-col">
-      <Header title="Where This App Stands vs. Competitors" num={12} />
-      <div className="flex-1 flex flex-col" style={{ padding: '1.5vh 4vw', overflow: 'hidden' }}>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col">
-          {/* Header row — 6 columns: feature + 5 competitors */}
-          <div className="grid flex-shrink-0" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', background: '#1A1A2E' }}>
-            <div className="text-white/60 font-semibold" style={{ padding: '1.2vh 1.5vw', fontSize: '0.72vw' }}>Feature</div>
-            {cols.map(({ key, label, highlight }) => (
-              <div key={key} className="text-center font-black" style={{ padding: '1.2vh 0.3vw', fontSize: '0.68vw', background: highlight ? '#F05A28' : 'transparent', color: 'white', whiteSpace: 'pre-line', lineHeight: 1.3 }}>
-                {label}
-              </div>
+    <SlideShell>
+      <SlideHeader title="UI & User Experience" num={11} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'flex', gap: 14 }}>
+        {features.map(({ title, desc, color }) => (
+          <div key={title} style={{ flex: 1, background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', borderTop: `4px solid ${color}`, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: NAVY, fontWeight: 800, fontSize: 13 }}>{title}</div>
+            <div style={{ color: '#6B7280', fontSize: 12, lineHeight: 1.6 }}>{desc}</div>
+          </div>
+        ))}
+      </div>
+      <SlideFooter />
+    </SlideShell>
+  );
+}
+
+function S12() {
+  const cols = [
+    { key: 'vb', label: 'Vocabulary\nBuilder', hi: true },
+    { key: 'anki', label: 'Anki', hi: false },
+    { key: 'quizlet', label: 'Quizlet', hi: false },
+    { key: 'duolingo', label: 'Duolingo', hi: false },
+    { key: 'memrise', label: 'Memrise', hi: false },
+  ];
+  type R = { feature: string; vb: string; anki: string; quizlet: string; duolingo: string; memrise: string };
+  const rows: R[] = [
+    { feature: 'SM-2 Spaced Repetition',       vb:'✅ Full',       anki:'✅ Full',         quizlet:'❌ Basic',       duolingo:'❌ Gamified',   memrise:'✅ Partial' },
+    { feature: 'CSV Industry Word Import',      vb:'✅ Yes',        anki:'✅ (complex)',    quizlet:'✅ (paid tier)', duolingo:'❌',            memrise:'❌' },
+    { feature: 'Auto Dictionary + Audio',       vb:'✅ Yes',        anki:'❌ Manual',      quizlet:'✅ Limited',     duolingo:'✅ Built-in',   memrise:'✅ Limited' },
+    { feature: 'Synonyms / Antonyms',           vb:'✅ Yes',        anki:'❌',             quizlet:'❌',             duolingo:'❌',            memrise:'❌' },
+    { feature: 'Cross-Device Cloud Sync',       vb:'✅ Realtime',   anki:'⚠️ AnkiWeb\n(paid)', quizlet:'✅ Yes',    duolingo:'✅ Yes',        memrise:'✅ Yes' },
+    { feature: 'Works in Browser (no install)', vb:'✅ Yes',        anki:'❌ App required', quizlet:'✅ Yes',        duolingo:'✅ Yes',        memrise:'✅ Yes' },
+    { feature: 'Dark Mode',                     vb:'✅ Yes',        anki:'✅ Yes',          quizlet:'✅ Yes',        duolingo:'❌',            memrise:'❌' },
+    { feature: 'Vietnamese Bank Payment',       vb:'✅ VietQR',     anki:'❌',             quizlet:'❌',             duolingo:'❌',            memrise:'❌' },
+    { feature: 'Admin Override / B2B Console',  vb:'✅ Full panel', anki:'❌',             quizlet:'❌',             duolingo:'❌',            memrise:'❌' },
+    { feature: 'Industry-Specific Focus',       vb:'✅ Yes',        anki:'⚠️ General',    quizlet:'⚠️ General',    duolingo:'❌ Consumer',   memrise:'⚠️ General' },
+    { feature: 'One-Time Bulk Team Setup',      vb:'✅ CSV batch',  anki:'⚠️ Manual',     quizlet:'⚠️ Limited',    duolingo:'❌',            memrise:'❌' },
+    { feature: 'Price (6 months)',              vb:'~$19',          anki:'Free / $25/yr\n(sync)', quizlet:'$35.99/yr', duolingo:'$79.99/yr', memrise:'$59.99/yr' },
+  ];
+  const colWidths = ['28%', '14.4%', '14.4%', '14.4%', '14.4%', '14.4%'];
+  return (
+    <SlideShell>
+      <SlideHeader title="Where This App Stands vs. Competitors" num={12} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '12px 24px 8px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Header */}
+          <div style={{ display: 'grid', gridTemplateColumns: colWidths.join(' '), background: NAVY, flexShrink: 0 }}>
+            <div style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600 }}>Feature</div>
+            {cols.map(({ key, label, hi }) => (
+              <div key={key} style={{ padding: '8px 4px', textAlign: 'center', background: hi ? ORANGE : 'transparent', color: '#fff', fontSize: 11, fontWeight: 700, whiteSpace: 'pre-line', lineHeight: 1.3 }}>{label}</div>
             ))}
           </div>
-          {/* Data rows */}
-          <div className="flex-1 flex flex-col">
+          {/* Rows */}
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {rows.map((row, i) => (
-              <div key={row.feature} className="grid flex-1" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', background: i % 2 === 0 ? 'white' : '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
-                <div className="text-navy font-semibold flex items-center" style={{ padding: '0 1.5vw', fontSize: '0.72vw' }}>{row.feature}</div>
-                {cols.map(({ key, highlight }) => (
-                  <div key={key} className="flex items-center justify-center text-center" style={{ background: highlight ? 'rgba(240,90,40,0.06)' : 'transparent', fontSize: '0.7vw', whiteSpace: 'pre-line', lineHeight: 1.3, padding: '0 0.4vw' }}>
-                    {row[key as keyof Row]}
+              <div key={row.feature} style={{ display: 'grid', gridTemplateColumns: colWidths.join(' '), flex: 1, background: i % 2 === 0 ? '#fff' : LGRAY, borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ padding: '0 12px', display: 'flex', alignItems: 'center', color: '#374151', fontSize: 11, fontWeight: 500 }}>{row.feature}</div>
+                {cols.map(({ key, hi }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: hi ? 'rgba(240,90,40,0.06)' : 'transparent', textAlign: 'center', color: '#374151', fontSize: 10, whiteSpace: 'pre-line', lineHeight: 1.3, padding: '0 4px' }}>
+                    {row[key as keyof R]}
                   </div>
                 ))}
               </div>
@@ -421,98 +415,75 @@ function S12() {
           </div>
         </div>
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S13: Competitive Arguments ─────────────────────────────────── */
 function S13() {
   const args = [
-    { vs: 'Against Anki', color: '#5B6CF0', text: 'Anki requires a separate desktop app and AnkiWeb subscription for sync. It has a steep learning curve and no auto-dictionary lookup. Vocabulary Builder offers the same SM-2 algorithm in a clean browser interface with automatic definitions, synonyms, and audio — at a lower cost.' },
-    { vs: 'Against Quizlet', color: '#9B5CF6', text: 'Quizlet\'s free tier is increasingly limited, and its "spaced repetition" is basic compared to true SM-2. CSV import is only on paid plans. Vocabulary Builder offers deeper SRS, automatic word enrichment, and is purpose-built for professional vocabulary — not just student flashcards.' },
-    { vs: 'Against Duolingo / Babbel', color: '#10B981', text: 'Those are designed for complete language beginners following a fixed curriculum. They cannot be customized with your own industry vocabulary. Vocabulary Builder is for professionals who already know conversational English and need to master the specific vocabulary of their field.' },
-    { vs: 'Against generic apps in Vietnam', color: '#F05A28', text: 'No other app combines SM-2 SRS + industry CSV import + auto-dictionary lookup + VietQR payment + a Vietnamese B2B admin console in one product.' },
+    { vs: 'Against Anki', color: '#5B6CF0', text: "Anki requires a separate desktop app and AnkiWeb subscription for sync. It has a steep learning curve and no auto-dictionary lookup. Vocabulary Builder offers the same SM-2 algorithm in a clean browser interface with automatic definitions, synonyms, and audio — at a lower cost." },
+    { vs: 'Against Quizlet', color: '#9B5CF6', text: "Quizlet's free tier is increasingly limited, and its \"spaced repetition\" is basic compared to true SM-2. CSV import is only on paid plans. Vocabulary Builder offers deeper SRS, automatic word enrichment, and is purpose-built for professional vocabulary — not just student flashcards." },
+    { vs: 'Against Duolingo / Babbel', color: '#10B981', text: "Those are designed for complete language beginners following a fixed curriculum. They cannot be customized with your own industry vocabulary. Vocabulary Builder is for professionals who already know conversational English and need to master the specific vocabulary of their field." },
+    { vs: 'Against generic apps in Vietnam', color: ORANGE, text: "No other app combines SM-2 SRS + industry CSV import + auto-dictionary lookup + VietQR payment + a Vietnamese B2B admin console in one product." },
   ];
   return (
-    <div className="slide-root flex flex-col" style={{ background: 'linear-gradient(160deg, #1A1A2E 0%, #0F3460 100%)' }}>
-      <Header title="The Core Competitive Argument" num={13} bg="#F05A28" />
-      <div className="flex-1 grid grid-cols-2 gap-4" style={{ padding: '2.5vh 5vw' }}>
+    <SlideShell bg={NAVY}>
+      <SlideHeader title="The Core Competitive Argument" num={13} bg={ORANGE} />
+      <div style={{ flex: 1, padding: '20px 32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {args.map(({ vs, color, text }) => (
-          <div key={vs} className="rounded-2xl flex flex-col" style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${color}50`, padding: '2vh 2.5vw' }}>
-            <div className="font-black text-white inline-flex rounded-lg mb-3 self-start" style={{ background: color, padding: '0.3vh 1vw', fontSize: '0.78vw' }}>{vs}</div>
-            <p className="text-white/75 leading-relaxed" style={{ fontSize: '0.82vw', lineHeight: 1.7 }}>{text}</p>
+          <div key={vs} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: `1px solid ${color}40`, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ background: color, color: '#fff', fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 6, alignSelf: 'flex-start' }}>{vs}</div>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.7, margin: 0 }}>{text}</p>
           </div>
         ))}
       </div>
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── S14: Summary ───────────────────────────────────────────────── */
 function S14() {
   const diffs = [
-    { title: 'True SM-2 Spaced Repetition', color: '#F05A28' },
+    { title: 'True SM-2 Spaced Repetition', color: ORANGE },
     { title: 'CSV Bulk Import', color: '#5B6CF0' },
-    { title: 'VietQR + Paddle Payments', color: '#FFC107' },
+    { title: 'VietQR + Paddle Payments', color: AMBER },
     { title: 'Full Admin B2B Console', color: '#10B981' },
   ];
   return (
-    <div className="slide-root flex flex-col" style={{ background: 'linear-gradient(135deg, #1A1A2E 0%, #16213E 100%)' }}>
-      <div className="h-1.5 bg-brand w-full flex-shrink-0" />
-      <div className="flex-1 flex flex-col items-center justify-center" style={{ padding: '4vh 8vw' }}>
-        <div className="text-brand font-semibold uppercase tracking-widest mb-4" style={{ fontSize: '0.78vw' }}>Summary</div>
-        <h1 className="text-white font-black text-center leading-tight" style={{ fontSize: '4vw' }}>
-          One App. Every Industry.<br /><span className="text-brand">Every Word.</span>
-        </h1>
-        <div className="grid grid-cols-4 gap-5 mt-10" style={{ width: '80vw' }}>
+    <SlideShell bg={NAVY}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 60px', textAlign: 'center' }}>
+        <div style={{ color: ORANGE, fontWeight: 700, fontSize: 12, letterSpacing: 3, marginBottom: 12 }}>SUMMARY</div>
+        <div style={{ color: '#fff', fontWeight: 900, fontSize: 42, lineHeight: 1.1, marginBottom: 8 }}>One App. Every Industry.</div>
+        <div style={{ color: ORANGE, fontWeight: 900, fontSize: 42, lineHeight: 1.1, marginBottom: 36 }}>Every Word.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, width: '100%' }}>
           {diffs.map(({ title, color }) => (
-            <div key={title} className="rounded-2xl flex flex-col items-center" style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${color}50`, padding: '3vh 2vw' }}>
-              <div className="rounded-xl mb-3" style={{ background: color, width: 36, height: 36 }} />
-              <div className="text-white font-black text-center" style={{ fontSize: '0.9vw' }}>{title}</div>
+            <div key={title} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10, borderTop: `4px solid ${color}`, padding: '20px 16px', textAlign: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: color, margin: '0 auto 12px' }} />
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{title}</div>
             </div>
           ))}
         </div>
       </div>
-      <Footer />
-    </div>
+      <SlideFooter />
+    </SlideShell>
   );
 }
 
-/* ── Shell ──────────────────────────────────────────────────────── */
-const SLIDES = [S01,S02,S03,S04,S05,S06,S07,S08,S09,S10,S11,S12,S13,S14];
-const SLIDE_TITLES = ['Cover','SM-2 Algorithm','Mastery Levels & Flashcards','Quiz Mode & Streak','Word Management','Dictionary Lookup','CSV Bulk Import','Data & Sync','Auth & Security','Payments','UI & UX','Comparison Table','Competitive Arguments','Summary'];
+const SLIDES = [S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14];
+const TITLES = ['Cover', 'SM-2 Algorithm', 'Mastery Levels & Flashcards', 'Quiz Mode & Streak', 'Word Management', 'Dictionary Lookup', 'CSV Bulk Import', 'Data & Sync', 'Auth & Security', 'Payments', 'UI & UX', 'Comparison Table', 'Competitive Arguments', 'Summary'];
 
 export default function FeatureAnalysis() {
   const [cur, setCur] = useState(0);
-  const total = SLIDES.length;
-  const SlideComp = SLIDES[cur];
+  const Slide = SLIDES[cur];
   return (
-    <div className="flex flex-col bg-black" style={{ width: '100vw', height: '100vh', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="flex-1 relative overflow-hidden"><SlideComp /></div>
-      <div className="flex items-center justify-between bg-gray-950 border-t border-white/10 flex-shrink-0" style={{ padding: '0 20px', height: 48 }}>
-        <button onClick={() => setCur(c => Math.max(c-1,0))} disabled={cur===0}
-          className="flex items-center gap-2 text-sm font-semibold text-white/60 disabled:text-white/20 hover:text-white transition-colors"
-          style={{ background:'none', border:'none', cursor: cur===0?'not-allowed':'pointer', padding:'8px 12px' }}>
-          <ChevL /> Prev
-        </button>
-        <div className="flex flex-col items-center gap-1">
-          <div className="text-white/40 text-xs font-medium">{SLIDE_TITLES[cur]}</div>
-          <div className="flex items-center gap-1">
-            {SLIDES.map((_,i) => (
-              <button key={i} onClick={() => setCur(i)}
-                style={{ width: i===cur?20:6, height:6, borderRadius:3, background: i===cur?'#F05A28':'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', padding:0, transition:'all 0.2s' }} />
-            ))}
-          </div>
-          <div className="text-white/30 text-xs">{cur+1} / {total}</div>
-        </div>
-        <button onClick={() => setCur(c => Math.min(c+1,total-1))} disabled={cur===total-1}
-          className="flex items-center gap-2 text-sm font-semibold text-white/60 disabled:text-white/20 hover:text-white transition-colors"
-          style={{ background:'none', border:'none', cursor: cur===total-1?'not-allowed':'pointer', padding:'8px 12px' }}>
-          Next <ChevR />
-        </button>
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: '#000', fontFamily: 'system-ui' }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Slide />
       </div>
+      <Nav cur={cur} total={SLIDES.length} onPrev={() => setCur(c => Math.max(c - 1, 0))} onNext={() => setCur(c => Math.min(c + 1, SLIDES.length - 1))} title={TITLES[cur]} />
     </div>
   );
 }
 
-export { S01,S02,S03,S04,S05,S06,S07,S08,S09,S10,S11,S12,S13,S14,SLIDES,SLIDE_TITLES };
+export { S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, SLIDES, TITLES };
