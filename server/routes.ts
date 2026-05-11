@@ -685,6 +685,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered word enrichment — dictionary + Datamuse + OpenAI combined
+  app.get('/api/enrich/:word', async (req: Request, res: Response) => {
+    const word = req.params.word?.trim();
+    if (!word) return res.status(400).json({ error: 'word is required' });
+    try {
+      const { enrichWord } = await import('./openai');
+      const result = await enrichWord(word);
+      res.json(result);
+    } catch (err) {
+      console.error('Enrich error:', err);
+      res.status(502).json({ error: 'Could not enrich word' });
+    }
+  });
+
   // Synonyms proxy — Datamuse API via backend to avoid CSP restrictions
   app.get('/api/synonyms/:word', async (req: Request, res: Response) => {
     const word = req.params.word?.trim();

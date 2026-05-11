@@ -2960,34 +2960,12 @@ function LookupView({
       }
       setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'fetching' } : r));
       try {
-        const resp = await fetch(
-          `/api/dictionary/${encodeURIComponent(row.word)}`,
-        );
+        const resp = await fetch(`/api/enrich/${encodeURIComponent(row.word)}`);
         if (!resp.ok) throw new Error('not_found');
         const data = await resp.json();
-        let definition = '';
-        let sentence = '';
-        let partOfSpeech = '';
-        if (Array.isArray(data) && data[0]?.meanings?.length) {
-          const meanings = data[0].meanings;
-          partOfSpeech = meanings[0].partOfSpeech || '';
-          // Collect first definition from each part-of-speech (up to 4)
-          const allDefs: string[] = [];
-          for (const m of meanings.slice(0, 4)) {
-            const d0 = m.definitions?.[0];
-            if (d0?.definition) allDefs.push(`(${m.partOfSpeech}) ${d0.definition}`);
-            if (!sentence && d0?.example) sentence = d0.example;
-          }
-          // If still no example, scan deeper
-          if (!sentence) {
-            outer: for (const m of meanings) {
-              for (const d of m.definitions || []) {
-                if (d.example) { sentence = d.example; break outer; }
-              }
-            }
-          }
-          definition = allDefs.join('\n');
-        }
+        const definition = Array.isArray(data.definitions) ? data.definitions.join('\n') : '';
+        const sentence = data.example || '';
+        const partOfSpeech = data.partOfSpeech || '';
         setRows((prev) =>
           prev.map((r, idx) =>
             idx === i ? { ...r, definition, sentence, partOfSpeech, status: definition ? 'ready' : 'not_found' } : r,
@@ -3410,39 +3388,30 @@ function AddEditWordView({
   );
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [antonyms, setAntonyms] = useState<string[]>([]);
-  const [synonymsFetched, setSynonymsFetched] = useState(false);
-  const [antonymsFetched, setAntonymsFetched] = useState(false);
+  const [enrichFetched, setEnrichFetched] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const fetchSynonyms = async () => {
+  const lookUpWord = async () => {
     if (!word.trim()) return;
     setLoading(true);
-    setSynonymsFetched(false);
+    setEnrichFetched(false);
     try {
-      const response = await fetch(`/api/synonyms/${encodeURIComponent(word.trim())}`);
+      const response = await fetch(`/api/enrich/${encodeURIComponent(word.trim())}`);
       const data = await response.json();
-      setSynonyms(data.slice(0, 10).map((item: any) => item.word));
+      if (data.definitions?.length) {
+        setDefinitions(data.definitions);
+      }
+      if (data.example && !sentences.some((s) => s.trim())) {
+        setSentences([data.example]);
+      }
+      setSynonyms(data.synonyms || []);
+      setAntonyms(data.antonyms || []);
     } catch (error) {
-      console.error('Error fetching synonyms:', error);
+      console.error('Error enriching word:', error);
       setSynonyms([]);
-    }
-    setSynonymsFetched(true);
-    setLoading(false);
-  };
-
-  const fetchAntonyms = async () => {
-    if (!word.trim()) return;
-    setLoading(true);
-    setAntonymsFetched(false);
-    try {
-      const response = await fetch(`/api/antonyms/${encodeURIComponent(word.trim())}`);
-      const data = await response.json();
-      setAntonyms(data.slice(0, 10).map((item: any) => item.word));
-    } catch (error) {
-      console.error('Error fetching antonyms:', error);
       setAntonyms([]);
     }
-    setAntonymsFetched(true);
+    setEnrichFetched(true);
     setLoading(false);
   };
 
@@ -3481,16 +3450,28 @@ function AddEditWordView({
           <label htmlFor="word" className="block text-sm font-medium text-foreground">
             Word
           </label>
-          <input
-            id="word"
-            type="text"
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-            data-testid="input-word"
-            placeholder="Enter the word"
-            className="w-full px-4 py-3 text-lg bg-card border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-            required
-          />
+          <div className="flex gap-2">
+            <input
+              id="word"
+              type="text"
+              value={word}
+              onChange={(e) => { setWord(e.target.value); setEnrichFetched(false); }}
+              data-testid="input-word"
+              placeholder="Enter the word"
+              className="flex-1 px-4 py-3 text-lg bg-card border border-card-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+              required
+            />
+            <button
+              type="button"
+              onClick={lookUpWord}
+              data-testid="button-lookup-word"
+              disabled={loading || !word.trim()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover-elevate active-elevate-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {loading ? 'Looking up…' : 'Look Up'}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">Click "Look Up" to auto-fill definitions, synonyms, and antonyms using AI.</p>
         </div>
 
         {/* Tags Input */}
@@ -3600,70 +3581,40 @@ function AddEditWordView({
           )}
         </div>
 
-        {/* Datamuse API Section */}
-        <div className="space-y-4 p-4 bg-muted rounded-lg">
-          <h3 className="text-sm font-semibold text-foreground">Word Relations</h3>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={fetchSynonyms}
-              data-testid="button-fetch-synonyms"
-              disabled={loading || !word.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover-elevate active-elevate-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Loading...' : 'Get Synonyms'}
-            </button>
-            <button
-              type="button"
-              onClick={fetchAntonyms}
-              data-testid="button-fetch-antonyms"
-              disabled={loading || !word.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover-elevate active-elevate-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Loading...' : 'Get Antonyms'}
-            </button>
-          </div>
-
-          {synonymsFetched && (
+        {/* Word Relations — shown after Look Up */}
+        {enrichFetched && (
+          <div className="space-y-3 p-4 bg-muted rounded-lg">
+            <h3 className="text-sm font-semibold text-foreground">Word Relations</h3>
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2">Synonyms:</h4>
               {synonyms.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {synonyms.map((syn, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
-                    >
+                    <span key={idx} className="px-3 py-1 bg-background text-foreground rounded-full text-xs">
                       {syn}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">No synonyms found for this word.</p>
+                <p className="text-xs text-muted-foreground italic">No synonyms found.</p>
               )}
             </div>
-          )}
-
-          {antonymsFetched && (
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2">Antonyms:</h4>
               {antonyms.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {antonyms.map((ant, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
-                    >
+                    <span key={idx} className="px-3 py-1 bg-background text-foreground rounded-full text-xs">
                       {ant}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">No antonyms found for this word.</p>
+                <p className="text-xs text-muted-foreground italic">No antonyms found.</p>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Form Actions */}
         <div className="flex gap-3 pt-6 border-t border-border">
