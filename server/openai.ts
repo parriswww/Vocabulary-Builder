@@ -11,7 +11,7 @@ export interface EnrichResult {
   antonyms: string[];
   partOfSpeech: string;
   example: string;
-  source: "ai" | "fallback";
+  source: "ai" | "dictionary";
 }
 
 export async function enrichWord(word: string): Promise<EnrichResult> {
@@ -125,7 +125,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       antonyms: antTopWords.slice(0, 8),
       partOfSpeech: firstPos,
       example: firstExample,
-      source: "fallback",
+      source: "dictionary",
     };
   }
 }
