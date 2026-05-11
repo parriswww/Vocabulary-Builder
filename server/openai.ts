@@ -1,4 +1,13 @@
 import OpenAI from "openai";
+import { z } from "zod";
+
+const AiResponseSchema = z.object({
+  definitions: z.array(z.string()).min(1),
+  synonyms: z.array(z.string()),
+  antonyms: z.array(z.string()),
+  partOfSpeech: z.string(),
+  example: z.string(),
+});
 
 export interface EnrichResult {
   definitions: string[];
@@ -129,12 +138,12 @@ Return ONLY valid JSON (no markdown, no explanation):
     const content = (msg?.content || "").trim();
     if (!content) throw new Error(`Empty response from OpenAI (finish: ${finish})`);
     const jsonStr = content.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-    const parsed = JSON.parse(jsonStr);
+    const parsed = AiResponseSchema.parse(JSON.parse(jsonStr));
 
     return {
-      definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
-      synonyms: Array.isArray(parsed.synonyms) ? parsed.synonyms.slice(0, 10) : [],
-      antonyms: Array.isArray(parsed.antonyms) ? parsed.antonyms.slice(0, 8) : [],
+      definitions: parsed.definitions.slice(0, 4),
+      synonyms: parsed.synonyms.slice(0, 10),
+      antonyms: parsed.antonyms.slice(0, 8),
       partOfSpeech: parsed.partOfSpeech || firstPos,
       example: parsed.example || firstExample,
       source: "ai",

@@ -3397,19 +3397,28 @@ function AddEditWordView({
     setEnrichFetched(false);
     try {
       const response = await fetch(`/api/enrich/${encodeURIComponent(word.trim())}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.error || `Server error ${response.status}`);
+      }
       const data = await response.json();
-      if (data.definitions?.length) {
-        setDefinitions(data.definitions);
+      if (Array.isArray(data.definitions) && data.definitions.length > 0) {
+        setDefinitions(data.definitions.map(String));
       }
       if (data.example && !sentences.some((s) => s.trim())) {
-        setSentences([data.example]);
+        setSentences([String(data.example)]);
       }
-      setSynonyms(data.synonyms || []);
-      setAntonyms(data.antonyms || []);
+      setSynonyms(Array.isArray(data.synonyms) ? data.synonyms.map(String) : []);
+      setAntonyms(Array.isArray(data.antonyms) ? data.antonyms.map(String) : []);
     } catch (error) {
       console.error('Error enriching word:', error);
       setSynonyms([]);
       setAntonyms([]);
+      toast({
+        title: 'Look Up failed',
+        description: error instanceof Error ? error.message : 'Could not fetch word data. Please try again.',
+        variant: 'destructive',
+      });
     }
     setEnrichFetched(true);
     setLoading(false);
