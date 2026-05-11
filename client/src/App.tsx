@@ -2968,22 +2968,25 @@ function LookupView({
         let definition = '';
         let sentence = '';
         let partOfSpeech = '';
-        if (Array.isArray(data) && data[0]?.meanings?.[0]) {
-          const meaning = data[0].meanings[0];
-          partOfSpeech = meaning.partOfSpeech || '';
-          const def0 = meaning.definitions?.[0];
-          if (def0) {
-            definition = def0.definition || '';
-            sentence = def0.example || '';
+        if (Array.isArray(data) && data[0]?.meanings?.length) {
+          const meanings = data[0].meanings;
+          partOfSpeech = meanings[0].partOfSpeech || '';
+          // Collect first definition from each part-of-speech (up to 4)
+          const allDefs: string[] = [];
+          for (const m of meanings.slice(0, 4)) {
+            const d0 = m.definitions?.[0];
+            if (d0?.definition) allDefs.push(`(${m.partOfSpeech}) ${d0.definition}`);
+            if (!sentence && d0?.example) sentence = d0.example;
           }
-          // If the first meaning has no example, scan others
+          // If still no example, scan deeper
           if (!sentence) {
-            outer: for (const m of data[0].meanings) {
+            outer: for (const m of meanings) {
               for (const d of m.definitions || []) {
                 if (d.example) { sentence = d.example; break outer; }
               }
             }
           }
+          definition = allDefs.join('\n');
         }
         setRows((prev) =>
           prev.map((r, idx) =>
@@ -3407,31 +3410,39 @@ function AddEditWordView({
   );
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [antonyms, setAntonyms] = useState<string[]>([]);
+  const [synonymsFetched, setSynonymsFetched] = useState(false);
+  const [antonymsFetched, setAntonymsFetched] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const fetchSynonyms = async () => {
     if (!word.trim()) return;
     setLoading(true);
+    setSynonymsFetched(false);
     try {
       const response = await fetch(`/api/synonyms/${encodeURIComponent(word.trim())}`);
       const data = await response.json();
       setSynonyms(data.slice(0, 10).map((item: any) => item.word));
     } catch (error) {
       console.error('Error fetching synonyms:', error);
+      setSynonyms([]);
     }
+    setSynonymsFetched(true);
     setLoading(false);
   };
 
   const fetchAntonyms = async () => {
     if (!word.trim()) return;
     setLoading(true);
+    setAntonymsFetched(false);
     try {
       const response = await fetch(`/api/antonyms/${encodeURIComponent(word.trim())}`);
       const data = await response.json();
       setAntonyms(data.slice(0, 10).map((item: any) => item.word));
     } catch (error) {
       console.error('Error fetching antonyms:', error);
+      setAntonyms([]);
     }
+    setAntonymsFetched(true);
     setLoading(false);
   };
 
@@ -3613,35 +3624,43 @@ function AddEditWordView({
             </button>
           </div>
 
-          {synonyms.length > 0 && (
+          {synonymsFetched && (
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2">Synonyms:</h4>
-              <div className="flex flex-wrap gap-2">
-                {synonyms.map((syn, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
-                  >
-                    {syn}
-                  </span>
-                ))}
-              </div>
+              {synonyms.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {synonyms.map((syn, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
+                    >
+                      {syn}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No synonyms found for this word.</p>
+              )}
             </div>
           )}
 
-          {antonyms.length > 0 && (
+          {antonymsFetched && (
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-2">Antonyms:</h4>
-              <div className="flex flex-wrap gap-2">
-                {antonyms.map((ant, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
-                  >
-                    {ant}
-                  </span>
-                ))}
-              </div>
+              {antonyms.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {antonyms.map((ant, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-background text-foreground rounded-full text-xs"
+                    >
+                      {ant}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No antonyms found for this word.</p>
+              )}
             </div>
           )}
         </div>
