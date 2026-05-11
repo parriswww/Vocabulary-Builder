@@ -2920,10 +2920,22 @@ function LookupView({
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [isSaving, setIsSaving] = useState(false);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const limitRef = useRef<ReturnType<typeof pLimit> | null>(null);
+
   const existingSet = useMemo(
     () => new Set(existingWords.map((w) => w.word.toLowerCase().trim())),
     [existingWords],
   );
+
+  const handleCancel = () => {
+    if (limitRef.current) {
+      limitRef.current.clearQueue();
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   const handleLookup = async () => {
     const lines = inputText
@@ -2953,17 +2965,37 @@ function LookupView({
     setIsFetching(true);
     setProgress({ done: 0, total: unique.length });
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     const limit = pLimit(5);
+    limitRef.current = limit;
+
+    // This promise resolves as soon as the abort controller fires, allowing
+    // Promise.all to settle even when p-limit leaves queued promises pending
+    // after clearQueue().
+    const abortSettled = new Promise<void>((resolve) => {
+      controller.signal.addEventListener('abort', resolve, { once: true });
+    });
+
+    const finalize = () => {
+      setRows((prev) =>
+        prev.map((r) => (r.status === 'fetching' ? { ...r, status: 'pending' } : r)),
+      );
+      setIsFetching(false);
+      abortControllerRef.current = null;
+      limitRef.current = null;
+    };
 
     const tasks = initialRows.map((row, i) => {
       if (row.status === 'exists') {
         setProgress((p) => ({ ...p, done: p.done + 1 }));
         return Promise.resolve();
       }
-      return limit(async () => {
+      const limitTask = limit(async () => {
+        if (controller.signal.aborted) return;
         setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'fetching' } : r));
         try {
-          const resp = await fetch(`/api/enrich/${encodeURIComponent(row.word)}`);
+          const resp = await fetch(`/api/enrich/${encodeURIComponent(row.word)}`, { signal: controller.signal });
           if (!resp.ok) throw new Error('not_found');
           const data = await resp.json();
           const definition = Array.isArray(data.definitions) ? data.definitions.join('\n') : '';
@@ -2974,15 +3006,20 @@ function LookupView({
               idx === i ? { ...r, definition, sentence, partOfSpeech, status: definition ? 'ready' : 'not_found' } : r,
             ),
           );
-        } catch {
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') return;
           setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'not_found' } : r));
         }
         setProgress((p) => ({ ...p, done: p.done + 1 }));
       });
+      // Race each individual task against the abort signal so that if
+      // clearQueue() leaves the p-limit promise pending, Promise.all still
+      // settles when the abort fires.
+      return Promise.race([limitTask, abortSettled]);
     });
 
     await Promise.all(tasks);
-    setIsFetching(false);
+    finalize();
   };
 
   const handleAddToList = async () => {
@@ -3049,13 +3086,22 @@ function LookupView({
             : 'Look up words'}
         </button>
 
-        {/* Progress bar */}
+        {/* Progress bar + cancel */}
         {isFetching && progress.total > 0 && (
-          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-300"
-              style={{ width: `${(progress.done / progress.total) * 100}%` }}
-            />
+          <div className="space-y-2">
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-300"
+                style={{ width: `${(progress.done / progress.total) * 100}%` }}
+              />
+            </div>
+            <button
+              onClick={handleCancel}
+              data-testid="button-lookup-cancel"
+              className="w-full py-2 rounded-xl border border-border bg-background text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>
