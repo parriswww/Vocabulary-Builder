@@ -3108,8 +3108,10 @@ function LookupView({
                     <span className="ml-2 text-xs text-muted-foreground italic">{row.partOfSpeech}</span>
                   )}
                 </div>
-                <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                  row.status === 'fetching'
+                <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                  row.status === 'pending'
+                    ? 'bg-muted text-muted-foreground/60'
+                    : row.status === 'fetching'
                     ? 'bg-muted text-muted-foreground'
                     : row.status === 'ready'
                     ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
@@ -3117,10 +3119,47 @@ function LookupView({
                     ? 'bg-muted text-muted-foreground'
                     : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
                 }`}>
-                  {row.status === 'fetching' && 'Looking up…'}
-                  {row.status === 'ready' && 'Ready'}
-                  {row.status === 'exists' && 'Already in list'}
-                  {row.status === 'not_found' && 'Not found'}
+                  {row.status === 'pending' && (
+                    <>
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Queued
+                    </>
+                  )}
+                  {row.status === 'fetching' && (
+                    <>
+                      <svg className="w-3 h-3 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Looking up…
+                    </>
+                  )}
+                  {row.status === 'ready' && (
+                    <>
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Ready
+                    </>
+                  )}
+                  {row.status === 'exists' && (
+                    <>
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Already in list
+                    </>
+                  )}
+                  {row.status === 'not_found' && (
+                    <>
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Not found
+                    </>
+                  )}
                 </span>
               </div>
 
