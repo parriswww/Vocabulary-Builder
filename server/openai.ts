@@ -1,10 +1,5 @@
 import OpenAI from "openai";
 
-export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
-
 export interface EnrichResult {
   definitions: string[];
   synonyms: string[];
@@ -12,6 +7,30 @@ export interface EnrichResult {
   partOfSpeech: string;
   example: string;
   source: "ai" | "dictionary";
+}
+
+function buildFallback(
+  rawDictionary: any[],
+  synTopWords: string[],
+  antTopWords: string[],
+  firstPos: string,
+  firstExample: string,
+): EnrichResult {
+  const fallbackDefs: string[] = [];
+  if (Array.isArray(rawDictionary) && rawDictionary[0]?.meanings?.length) {
+    for (const m of rawDictionary[0].meanings.slice(0, 3)) {
+      const d0 = m.definitions?.[0];
+      if (d0?.definition) fallbackDefs.push(`(${m.partOfSpeech}) ${d0.definition}`);
+    }
+  }
+  return {
+    definitions: fallbackDefs,
+    synonyms: synTopWords.slice(0, 10),
+    antonyms: antTopWords.slice(0, 8),
+    partOfSpeech: firstPos,
+    example: firstExample,
+    source: "dictionary",
+  };
 }
 
 export async function enrichWord(word: string): Promise<EnrichResult> {
@@ -28,16 +47,16 @@ export async function enrichWord(word: string): Promise<EnrichResult> {
   let antWords: { word: string }[] = [];
 
   if (dictRes.status === "fulfilled" && dictRes.value.ok) {
-    try { rawDictionary = await dictRes.value.json(); } catch {}
+    try { rawDictionary = await dictRes.value.json(); } catch (e) { console.warn("[enrich] dict parse error:", e); }
   }
   if (mlRes.status === "fulfilled" && mlRes.value.ok) {
-    try { mlWords = await mlRes.value.json(); } catch {}
+    try { mlWords = await mlRes.value.json(); } catch (e) { console.warn("[enrich] ml parse error:", e); }
   }
   if (synRes.status === "fulfilled" && synRes.value.ok) {
-    try { synWords = await synRes.value.json(); } catch {}
+    try { synWords = await synRes.value.json(); } catch (e) { console.warn("[enrich] syn parse error:", e); }
   }
   if (antRes.status === "fulfilled" && antRes.value.ok) {
-    try { antWords = await antRes.value.json(); } catch {}
+    try { antWords = await antRes.value.json(); } catch (e) { console.warn("[enrich] ant parse error:", e); }
   }
 
   const allRawDefs: string[] = [];
@@ -86,8 +105,19 @@ Return ONLY valid JSON (no markdown, no explanation):
   "example": "..."
 }`;
 
+  let client: OpenAI;
   try {
-    const completion = await openai.chat.completions.create({
+    client = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  } catch (initErr) {
+    console.error("[enrich] OpenAI client init failed, using dictionary fallback:", initErr);
+    return buildFallback(rawDictionary, synTopWords, antTopWords, firstPos, firstExample);
+  }
+
+  try {
+    const completion = await client.chat.completions.create({
       model: "gpt-5-mini",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 4000,
@@ -96,7 +126,6 @@ Return ONLY valid JSON (no markdown, no explanation):
     const msg = completion.choices[0]?.message;
     const finish = completion.choices[0]?.finish_reason;
     console.log("[OpenAI] finish_reason:", finish, "content length:", (msg?.content || "").length);
-    // gpt-5-mini is a reasoning model; visible output is in content
     const content = (msg?.content || "").trim();
     if (!content) throw new Error(`Empty response from OpenAI (finish: ${finish})`);
     const jsonStr = content.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -111,21 +140,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       source: "ai",
     };
   } catch (err) {
-    console.error("OpenAI enrichment failed, using fallback:", err);
-    const fallbackDefs: string[] = [];
-    if (Array.isArray(rawDictionary) && rawDictionary[0]?.meanings?.length) {
-      for (const m of rawDictionary[0].meanings.slice(0, 3)) {
-        const d0 = m.definitions?.[0];
-        if (d0?.definition) fallbackDefs.push(`(${m.partOfSpeech}) ${d0.definition}`);
-      }
-    }
-    return {
-      definitions: fallbackDefs,
-      synonyms: synTopWords.slice(0, 10),
-      antonyms: antTopWords.slice(0, 8),
-      partOfSpeech: firstPos,
-      example: firstExample,
-      source: "dictionary",
-    };
+    console.error("[enrich] OpenAI call failed, using dictionary fallback:", err);
+    return buildFallback(rawDictionary, synTopWords, antTopWords, firstPos, firstExample);
   }
 }
