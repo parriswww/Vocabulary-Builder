@@ -685,6 +685,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Synonyms proxy — Datamuse API via backend to avoid CSP restrictions
+  app.get('/api/synonyms/:word', async (req: Request, res: Response) => {
+    const word = req.params.word?.trim();
+    if (!word) return res.status(400).json({ error: 'word is required' });
+    try {
+      const upstream = await fetch(
+        `https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}&max=15`,
+        { headers: { 'Accept': 'application/json' } },
+      );
+      const data = await upstream.json();
+      res.json(data);
+    } catch (err) {
+      console.error('Synonyms proxy error:', err);
+      res.status(502).json({ error: 'Could not reach synonyms service' });
+    }
+  });
+
+  // Antonyms proxy — Datamuse API via backend to avoid CSP restrictions
+  app.get('/api/antonyms/:word', async (req: Request, res: Response) => {
+    const word = req.params.word?.trim();
+    if (!word) return res.status(400).json({ error: 'word is required' });
+    try {
+      const upstream = await fetch(
+        `https://api.datamuse.com/words?rel_ant=${encodeURIComponent(word)}&max=15`,
+        { headers: { 'Accept': 'application/json' } },
+      );
+      const data = await upstream.json();
+      res.json(data);
+    } catch (err) {
+      console.error('Antonyms proxy error:', err);
+      res.status(502).json({ error: 'Could not reach antonyms service' });
+    }
+  });
+
   // Dictionary proxy — avoids CSP / CORS restrictions in the browser
   app.get('/api/dictionary/:word', async (req: Request, res: Response) => {
     const word = req.params.word?.trim();

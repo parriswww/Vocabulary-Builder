@@ -3413,7 +3413,7 @@ function AddEditWordView({
     if (!word.trim()) return;
     setLoading(true);
     try {
-      const response = await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}`);
+      const response = await fetch(`/api/synonyms/${encodeURIComponent(word.trim())}`);
       const data = await response.json();
       setSynonyms(data.slice(0, 10).map((item: any) => item.word));
     } catch (error) {
@@ -3426,7 +3426,7 @@ function AddEditWordView({
     if (!word.trim()) return;
     setLoading(true);
     try {
-      const response = await fetch(`https://api.datamuse.com/words?rel_ant=${encodeURIComponent(word)}`);
+      const response = await fetch(`/api/antonyms/${encodeURIComponent(word.trim())}`);
       const data = await response.json();
       setAntonyms(data.slice(0, 10).map((item: any) => item.word));
     } catch (error) {
