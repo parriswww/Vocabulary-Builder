@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import pLimit from 'p-limit';
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -2952,31 +2953,35 @@ function LookupView({
     setIsFetching(true);
     setProgress({ done: 0, total: unique.length });
 
-    for (let i = 0; i < initialRows.length; i++) {
-      const row = initialRows[i];
+    const limit = pLimit(5);
+
+    const tasks = initialRows.map((row, i) => {
       if (row.status === 'exists') {
         setProgress((p) => ({ ...p, done: p.done + 1 }));
-        continue;
+        return Promise.resolve();
       }
-      setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'fetching' } : r));
-      try {
-        const resp = await fetch(`/api/enrich/${encodeURIComponent(row.word)}`);
-        if (!resp.ok) throw new Error('not_found');
-        const data = await resp.json();
-        const definition = Array.isArray(data.definitions) ? data.definitions.join('\n') : '';
-        const sentence = data.example || '';
-        const partOfSpeech = data.partOfSpeech || '';
-        setRows((prev) =>
-          prev.map((r, idx) =>
-            idx === i ? { ...r, definition, sentence, partOfSpeech, status: definition ? 'ready' : 'not_found' } : r,
-          ),
-        );
-      } catch {
-        setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'not_found' } : r));
-      }
-      setProgress((p) => ({ ...p, done: p.done + 1 }));
-      if (i < initialRows.length - 1) await new Promise((res) => setTimeout(res, 120));
-    }
+      return limit(async () => {
+        setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'fetching' } : r));
+        try {
+          const resp = await fetch(`/api/enrich/${encodeURIComponent(row.word)}`);
+          if (!resp.ok) throw new Error('not_found');
+          const data = await resp.json();
+          const definition = Array.isArray(data.definitions) ? data.definitions.join('\n') : '';
+          const sentence = data.example || '';
+          const partOfSpeech = data.partOfSpeech || '';
+          setRows((prev) =>
+            prev.map((r, idx) =>
+              idx === i ? { ...r, definition, sentence, partOfSpeech, status: definition ? 'ready' : 'not_found' } : r,
+            ),
+          );
+        } catch {
+          setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, status: 'not_found' } : r));
+        }
+        setProgress((p) => ({ ...p, done: p.done + 1 }));
+      });
+    });
+
+    await Promise.all(tasks);
     setIsFetching(false);
   };
 
