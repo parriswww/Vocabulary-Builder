@@ -33,7 +33,7 @@ function rowToRecord(row: Record<string, unknown>): SubscriberRecord {
   };
 }
 
-// ── Auto-migration: ensure table exists and referral_code column exists ──────
+// ── Auto-migration: ensure tables exist ──────────────────────────────────────
 
 export async function dbInit(): Promise<void> {
   try {
@@ -59,13 +59,22 @@ export async function dbInit(): Promise<void> {
     await pool.query(`
       ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS referral_code TEXT
     `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS referral_codes (
+        code TEXT PRIMARY KEY,
+        label TEXT NOT NULL DEFAULT '',
+        created_at BIGINT NOT NULL DEFAULT 0
+      )
+    `);
+
     console.log('[db] subscribers table ready');
   } catch (err) {
     console.error('[db] Failed to initialize database:', err);
   }
 }
 
-// ── Public API ──────────────────────────────────────────────────────────────
+// ── Subscriber Public API ────────────────────────────────────────────────────
 
 export async function dbGetSubscriber(uid: string): Promise<SubscriberRecord | null> {
   const res = await pool.query('SELECT * FROM subscribers WHERE uid = $1', [uid]);
@@ -126,4 +135,42 @@ export async function dbUpsertSubscriber(record: SubscriberRecord): Promise<void
       record.referralCode ?? null,
     ],
   );
+}
+
+// ── Referral Codes Public API ────────────────────────────────────────────────
+
+export interface ReferralCode {
+  code: string;
+  label: string;
+  createdAt: number;
+}
+
+export async function dbGetAllReferralCodes(): Promise<ReferralCode[]> {
+  const res = await pool.query('SELECT * FROM referral_codes ORDER BY created_at DESC');
+  return res.rows.map(row => ({
+    code: row.code as string,
+    label: (row.label ?? '') as string,
+    createdAt: bigint(row.created_at) ?? 0,
+  }));
+}
+
+export async function dbCreateReferralCode(code: string, label: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO referral_codes (code, label, created_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (code) DO UPDATE SET label = EXCLUDED.label`,
+    [code, label, Date.now()],
+  );
+}
+
+export async function dbDeleteReferralCode(code: string): Promise<void> {
+  await pool.query('DELETE FROM referral_codes WHERE code = $1', [code]);
+}
+
+export async function dbIsValidReferralCode(code: string): Promise<boolean> {
+  const res = await pool.query(
+    'SELECT 1 FROM referral_codes WHERE code = $1 LIMIT 1',
+    [code],
+  );
+  return res.rows.length > 0;
 }

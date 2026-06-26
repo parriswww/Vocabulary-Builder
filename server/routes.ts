@@ -9,6 +9,10 @@ import {
   dbGetAllSubscribers,
   dbFindSubscriberByEmail,
   dbUpsertSubscriber,
+  dbGetAllReferralCodes,
+  dbCreateReferralCode,
+  dbDeleteReferralCode,
+  dbIsValidReferralCode,
 } from "./db";
 
 // Auto-detect Paddle environment from token/key prefix (live_ = production, test_ = sandbox)
@@ -548,6 +552,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // --- Admin: List referral codes (with subscriber counts) ---
+  app.get('/api/admin/referral-codes', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const [codes, subscribers] = await Promise.all([
+        dbGetAllReferralCodes(),
+        dbGetAllSubscribers(),
+      ]);
+      const countByCode: Record<string, number> = {};
+      for (const sub of subscribers) {
+        if (sub.referralCode) countByCode[sub.referralCode] = (countByCode[sub.referralCode] || 0) + 1;
+      }
+      res.json({ codes: codes.map(c => ({ ...c, subscriberCount: countByCode[c.code] || 0 })) });
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch referral codes' });
+    }
+  });
+
+  // --- Admin: Create referral code ---
+  app.post('/api/admin/referral-codes', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { code, label } = req.body as { code?: string; label?: string };
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({ error: 'Code is required' });
+    }
+    // Sanitize: only lowercase alphanumeric, hyphen, underscore
+    const sanitized = code.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+    if (!sanitized) return res.status(400).json({ error: 'Code must contain letters or numbers' });
+    const labelClean = (label || sanitized).trim();
+    try {
+      await dbCreateReferralCode(sanitized, labelClean);
+      res.json({ code: sanitized, label: labelClean });
+    } catch {
+      res.status(500).json({ error: 'Failed to create referral code' });
+    }
+  });
+
+  // --- Admin: Delete referral code ---
+  app.delete('/api/admin/referral-codes/:code', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    try {
+      await dbDeleteReferralCode(req.params.code);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to delete referral code' });
+    }
+  });
+
   // --- Paddle webhook handler ---
   app.post('/api/webhooks/paddle', async (req, res) => {
     try {
@@ -576,7 +628,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).send('OK');
       }
 
-      const referralCode = event.data.custom_data?.referralCode?.trim() || null;
+      const rawReferralCode = event.data.custom_data?.referralCode?.trim().toLowerCase() || null;
+
+      // Only accept referral codes that were pre-registered by admin
+      let referralCode: string | null = null;
+      if (rawReferralCode) {
+        const isValid = await dbIsValidReferralCode(rawReferralCode);
+        if (isValid) {
+          referralCode = rawReferralCode;
+        } else {
+          console.log(`[webhook] Ignoring unregistered referral code: "${rawReferralCode}"`);
+        }
+      }
 
       let subscriptionUpdate: Partial<Subscription> = { updatedAt: Date.now() };
       let registryUpdate: Partial<SubscriberRecord> = { uid: userId, updatedAt: Date.now(), referralCode };

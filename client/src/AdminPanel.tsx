@@ -1,17 +1,28 @@
 import { useState, useEffect } from 'react';
 import type { SubscriberRecord } from '@shared/schema';
 
+interface ReferralCodeEntry {
+  code: string;
+  label: string;
+  createdAt: number;
+  subscriberCount: number;
+}
+
 export default function AdminPanel() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('admin_token'));
   const [authError, setAuthError] = useState('');
   const [subscribers, setSubscribers] = useState<SubscriberRecord[]>([]);
+  const [referralCodes, setReferralCodes] = useState<ReferralCodeEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' }>({ text: '', type: 'success' });
   const [extendDays, setExtendDays] = useState<Record<string, string>>({});
   const [activateMonths, setActivateMonths] = useState<Record<string, string>>({});
   const [referralFilter, setReferralFilter] = useState<string>('all');
+  const [newCode, setNewCode] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     const splash = document.getElementById('splash');
@@ -23,13 +34,21 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if (token) fetchSubscribers();
+    if (token) {
+      fetchSubscribers();
+      fetchReferralCodes();
+    }
   }, [token]);
 
   const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: '', type: 'success' }), 6000);
   };
+
+  const adminHeaders = () => ({
+    'Content-Type': 'application/json',
+    'x-admin-token': token!,
+  });
 
   const login = async () => {
     setAuthError('');
@@ -53,6 +72,7 @@ export default function AdminPanel() {
     sessionStorage.removeItem('admin_token');
     setToken(null);
     setSubscribers([]);
+    setReferralCodes([]);
   };
 
   const fetchSubscribers = async () => {
@@ -70,6 +90,66 @@ export default function AdminPanel() {
     }
   };
 
+  const fetchReferralCodes = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/admin/referral-codes', { headers: { 'x-admin-token': token } });
+      if (!res.ok) return;
+      const data = await res.json();
+      setReferralCodes(data.codes || []);
+    } catch { /* silent */ }
+  };
+
+  const addReferralCode = async () => {
+    if (!newCode.trim()) { showMessage('Enter a code', 'error'); return; }
+    setActionLoading('add-code');
+    try {
+      const res = await fetch('/api/admin/referral-codes', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ code: newCode.trim(), label: newLabel.trim() || newCode.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMessage(`Referral code "${data.code}" created`);
+        setNewCode('');
+        setNewLabel('');
+        await fetchReferralCodes();
+      } else {
+        showMessage(data.error || 'Failed to create code', 'error');
+      }
+    } catch { showMessage('Network error', 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const deleteReferralCode = async (code: string) => {
+    if (!confirm(`Delete referral code "${code}"? This cannot be undone.`)) return;
+    setActionLoading('del-' + code);
+    try {
+      const res = await fetch(`/api/admin/referral-codes/${encodeURIComponent(code)}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-token': token! },
+      });
+      if (res.ok) {
+        showMessage(`Code "${code}" deleted`);
+        if (referralFilter === code) setReferralFilter('all');
+        await fetchReferralCodes();
+      } else {
+        const data = await res.json();
+        showMessage(data.error || 'Failed to delete', 'error');
+      }
+    } catch { showMessage('Network error', 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const copyLink = (code: string) => {
+    const link = `${window.location.origin}/?ref=${code}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    });
+  };
+
   const extendTrial = async (uid: string) => {
     const days = parseInt(extendDays[uid] || '7', 10);
     if (isNaN(days) || days <= 0) { showMessage('Enter valid days', 'error'); return; }
@@ -77,7 +157,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch('/api/admin/extend-trial', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token! },
+        headers: adminHeaders(),
         body: JSON.stringify({ uid, days }),
       });
       const data = await res.json();
@@ -92,7 +172,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch('/api/admin/grant-free-month', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token! },
+        headers: adminHeaders(),
         body: JSON.stringify({ uid }),
       });
       const data = await res.json();
@@ -109,7 +189,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch('/api/admin/activate-paid', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token! },
+        headers: adminHeaders(),
         body: JSON.stringify({ uid, months }),
       });
       const data = await res.json();
@@ -144,8 +224,10 @@ export default function AdminPanel() {
     return { label: s.status.charAt(0).toUpperCase() + s.status.slice(1), cls: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' };
   };
 
-  const allReferralCodes = Array.from(
-    new Set(subscribers.map(s => s.referralCode).filter(Boolean) as string[])
+  // All registered codes + any historical codes found in subscriber records (may exist before registration was added)
+  const registeredCodeSet = new Set(referralCodes.map(r => r.code));
+  const historicalCodes = Array.from(
+    new Set(subscribers.map(s => s.referralCode).filter((c): c is string => !!c && !registeredCodeSet.has(c)))
   ).sort();
 
   const filteredSubscribers = referralFilter === 'all'
@@ -160,7 +242,7 @@ export default function AdminPanel() {
     trial: subscribers.filter(s => s.status === 'trialing' && s.trialEndDate && s.trialEndDate > Date.now()).length,
     trialExpired: subscribers.filter(s => s.status === 'trialing' && s.trialEndDate && s.trialEndDate <= Date.now()).length,
     adminGrant: subscribers.filter(s => s.adminGrantedFreeUntil && s.adminGrantedFreeUntil > Date.now()).length,
-    referrals: allReferralCodes.length,
+    referrals: referralCodes.length,
   };
 
   // Login screen
@@ -205,7 +287,7 @@ export default function AdminPanel() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchSubscribers}
+            onClick={() => { fetchSubscribers(); fetchReferralCodes(); }}
             disabled={loading}
             className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
             data-testid="button-admin-refresh"
@@ -233,9 +315,9 @@ export default function AdminPanel() {
         </div>
       )}
 
-      <main className="p-6">
+      <main className="p-6 space-y-6">
         {/* QR Payment Notice */}
-        <div className="bg-orange-900/20 border border-orange-700/40 rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
+        <div className="bg-orange-900/20 border border-orange-700/40 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-orange-400 text-lg mt-0.5">&#9432;</span>
           <div>
             <p className="text-orange-300 text-sm font-semibold mb-1">QR / Manual Payment Activation</p>
@@ -248,14 +330,14 @@ export default function AdminPanel() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {[
             { label: 'Total Users', value: stats.total, color: 'text-white' },
             { label: 'Paid / Active', value: stats.paid, color: 'text-green-400' },
             { label: 'On Trial', value: stats.trial, color: 'text-amber-400' },
             { label: 'Trial Expired', value: stats.trialExpired, color: 'text-red-400' },
             { label: 'Admin Grant', value: stats.adminGrant, color: 'text-blue-400' },
-            { label: 'Referral Links', value: stats.referrals, color: 'text-purple-400' },
+            { label: 'Referral Codes', value: stats.referrals, color: 'text-purple-400' },
           ].map(stat => (
             <div key={stat.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -264,7 +346,129 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* Subscribers Table */}
+        {/* ── Referral Codes Management ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-800">
+            <h2 className="text-lg font-semibold text-white">Referral Codes</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Only pre-registered codes are tracked. Give each promoter their unique link — unrecognised codes are silently ignored.
+            </p>
+          </div>
+
+          {/* Add new code form */}
+          <div className="px-6 py-4 border-b border-gray-800 flex items-end gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-400">Code <span className="text-gray-600">(letters, numbers, - _)</span></label>
+              <input
+                type="text"
+                value={newCode}
+                onChange={e => setNewCode(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && addReferralCode()}
+                placeholder="e.g. sarah"
+                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 w-40 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-gray-600"
+                data-testid="input-new-referral-code"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-400">Promoter name <span className="text-gray-600">(optional)</span></label>
+              <input
+                type="text"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addReferralCode()}
+                placeholder="e.g. Sarah Johnson"
+                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 w-48 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-gray-600"
+                data-testid="input-new-referral-label"
+              />
+            </div>
+            <button
+              onClick={addReferralCode}
+              disabled={actionLoading === 'add-code' || !newCode.trim()}
+              className="px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white text-sm rounded-lg transition-colors disabled:opacity-50 font-medium"
+              data-testid="button-add-referral-code"
+            >
+              {actionLoading === 'add-code' ? 'Adding…' : '+ Add Code'}
+            </button>
+          </div>
+
+          {/* Codes table */}
+          {referralCodes.length === 0 ? (
+            <div className="px-6 py-10 text-center text-gray-600 text-sm">
+              No referral codes yet. Add one above to get started.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800 text-gray-400 text-xs">
+                    <th className="text-left px-6 py-3 font-medium">Code</th>
+                    <th className="text-left px-6 py-3 font-medium">Promoter Name</th>
+                    <th className="text-left px-6 py-3 font-medium">Subscribers</th>
+                    <th className="text-left px-6 py-3 font-medium">Link to share</th>
+                    <th className="text-left px-6 py-3 font-medium">Added</th>
+                    <th className="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referralCodes.map(rc => {
+                    const link = `${window.location.origin}/?ref=${rc.code}`;
+                    return (
+                      <tr key={rc.code} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
+                        <td className="px-6 py-3">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            {rc.code}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-gray-200 text-sm">{rc.label}</td>
+                        <td className="px-6 py-3">
+                          {rc.subscriberCount > 0 ? (
+                            <button
+                              onClick={() => setReferralFilter(rc.code)}
+                              className="text-purple-400 hover:text-purple-300 font-semibold text-sm transition-colors"
+                              data-testid={`button-filter-by-code-${rc.code}`}
+                              title="Filter subscribers by this code"
+                            >
+                              {rc.subscriberCount}
+                            </button>
+                          ) : (
+                            <span className="text-gray-600 text-sm">0</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded truncate max-w-[200px]">
+                              {link}
+                            </code>
+                            <button
+                              onClick={() => copyLink(rc.code)}
+                              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors whitespace-nowrap"
+                              data-testid={`button-copy-link-${rc.code}`}
+                            >
+                              {copiedCode === rc.code ? 'Copied!' : 'Copy'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 text-gray-500 text-xs">{formatDate(rc.createdAt)}</td>
+                        <td className="px-6 py-3">
+                          <button
+                            onClick={() => deleteReferralCode(rc.code)}
+                            disabled={actionLoading === 'del-' + rc.code}
+                            className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded transition-colors disabled:opacity-50"
+                            data-testid={`button-delete-code-${rc.code}`}
+                          >
+                            {actionLoading === 'del-' + rc.code ? '…' : 'Delete'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Subscribers Table ── */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -281,12 +485,23 @@ export default function AdminPanel() {
                   className="bg-gray-800 border border-gray-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 >
                   <option value="all">All</option>
-                  {allReferralCodes.map(code => (
-                    <option key={code} value={code}>{code}</option>
+                  {referralCodes.map(rc => (
+                    <option key={rc.code} value={rc.code}>{rc.label} ({rc.code})</option>
+                  ))}
+                  {historicalCodes.map(code => (
+                    <option key={code} value={code}>{code} (unregistered)</option>
                   ))}
                   <option value="none">No referral</option>
                 </select>
               </div>
+              {referralFilter !== 'all' && (
+                <button
+                  onClick={() => setReferralFilter('all')}
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Clear filter ×
+                </button>
+              )}
             </div>
             <span className="text-xs text-gray-500">Persists across server restarts · updates on each user login</span>
           </div>
@@ -311,6 +526,7 @@ export default function AdminPanel() {
                 <tbody>
                   {filteredSubscribers.map(sub => {
                     const badge = getStatusBadge(sub);
+                    const codeEntry = sub.referralCode ? referralCodes.find(r => r.code === sub.referralCode) : null;
                     return (
                       <tr key={sub.uid} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
                         {/* User */}
@@ -337,10 +553,15 @@ export default function AdminPanel() {
                             <button
                               onClick={() => setReferralFilter(sub.referralCode!)}
                               data-testid={`button-filter-referral-${sub.uid}`}
-                              className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                              className="inline-flex flex-col items-start"
                               title={`Filter by ${sub.referralCode}`}
                             >
-                              {sub.referralCode}
+                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition-colors">
+                                {sub.referralCode}
+                              </span>
+                              {codeEntry && codeEntry.label !== sub.referralCode && (
+                                <span className="text-gray-600 text-xs mt-0.5 ml-1">{codeEntry.label}</span>
+                              )}
                             </button>
                           ) : (
                             <span className="text-gray-600 text-xs">—</span>
