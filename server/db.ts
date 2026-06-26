@@ -163,6 +163,14 @@ export async function dbCreateReferralCode(code: string, label: string): Promise
   );
 }
 
+export async function dbGetReferralCodeSubscriberCount(code: string): Promise<number> {
+  const res = await pool.query(
+    'SELECT COUNT(*) FROM subscribers WHERE referral_code = $1',
+    [code],
+  );
+  return parseInt(res.rows[0].count as string, 10);
+}
+
 export async function dbDeleteReferralCode(code: string): Promise<void> {
   await pool.query('DELETE FROM referral_codes WHERE code = $1', [code]);
 }

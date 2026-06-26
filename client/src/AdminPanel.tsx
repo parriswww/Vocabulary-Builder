@@ -122,11 +122,14 @@ export default function AdminPanel() {
     finally { setActionLoading(null); }
   };
 
-  const deleteReferralCode = async (code: string) => {
-    if (!confirm(`Delete referral code "${code}"? This cannot be undone.`)) return;
+  const deleteReferralCode = async (code: string, force = false) => {
+    if (!force) {
+      if (!confirm(`Delete referral code "${code}"? This cannot be undone.`)) return;
+    }
     setActionLoading('del-' + code);
     try {
-      const res = await fetch(`/api/admin/referral-codes/${encodeURIComponent(code)}`, {
+      const url = `/api/admin/referral-codes/${encodeURIComponent(code)}${force ? '?force=true' : ''}`;
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { 'x-admin-token': token! },
       });
@@ -136,6 +139,19 @@ export default function AdminPanel() {
         await fetchReferralCodes();
       } else {
         const data = await res.json();
+        if (res.status === 409 && data.subscriberCount > 0) {
+          setActionLoading(null);
+          const n = data.subscriberCount;
+          const confirmed = confirm(
+            `Warning: "${code}" has ${n} subscriber${n === 1 ? '' : 's'} linked to it.\n\n` +
+            `Deleting this code will NOT remove those subscribers, but if someone later creates ` +
+            `a new code with the same name, those ${n} subscriber${n === 1 ? '' : 's'} will appear ` +
+            `under the new promoter — misattributing them.\n\n` +
+            `Are you sure you want to delete "${code}" anyway?`
+          );
+          if (confirmed) await deleteReferralCode(code, true);
+          return;
+        }
         showMessage(data.error || 'Failed to delete', 'error');
       }
     } catch { showMessage('Network error', 'error'); }

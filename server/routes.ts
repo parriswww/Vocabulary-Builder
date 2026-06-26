@@ -12,6 +12,7 @@ import {
   dbGetAllReferralCodes,
   dbCreateReferralCode,
   dbDeleteReferralCode,
+  dbGetReferralCodeSubscriberCount,
   dbIsValidReferralCode,
 } from "./db";
 
@@ -592,7 +593,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- Admin: Delete referral code ---
   app.delete('/api/admin/referral-codes/:code', async (req, res) => {
     if (!requireAdmin(req, res)) return;
+    const force = req.query.force === 'true';
     try {
+      const count = await dbGetReferralCodeSubscriberCount(req.params.code);
+      if (count > 0 && !force) {
+        return res.status(409).json({
+          error: 'Code has subscribers',
+          subscriberCount: count,
+        });
+      }
       await dbDeleteReferralCode(req.params.code);
       res.json({ ok: true });
     } catch {
