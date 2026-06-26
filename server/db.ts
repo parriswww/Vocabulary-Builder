@@ -29,10 +29,11 @@ function rowToRecord(row: Record<string, unknown>): SubscriberRecord {
     currentPeriodEnd:     bigint(row.current_period_end),
     cancelAtPeriodEnd:    (row.cancel_at_period_end ?? false) as boolean,
     updatedAt:            bigint(row.updated_at) ?? 0,
+    referralCode:         (row.referral_code        ?? null) as string | null,
   };
 }
 
-// ── Auto-migration: ensure table exists on startup ──────────────────────────
+// ── Auto-migration: ensure table exists and referral_code column exists ──────
 
 export async function dbInit(): Promise<void> {
   try {
@@ -50,8 +51,13 @@ export async function dbInit(): Promise<void> {
         customer_id TEXT,
         current_period_end BIGINT,
         cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
-        updated_at BIGINT NOT NULL DEFAULT 0
+        updated_at BIGINT NOT NULL DEFAULT 0,
+        referral_code TEXT
       )
+    `);
+    // Add referral_code column to existing tables that pre-date this migration
+    await pool.query(`
+      ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS referral_code TEXT
     `);
     console.log('[db] subscribers table ready');
   } catch (err) {
@@ -85,9 +91,9 @@ export async function dbUpsertSubscriber(record: SubscriberRecord): Promise<void
         uid, email, display_name, status, is_premium,
         trial_start_date, trial_end_date, admin_granted_free_until,
         subscription_id, customer_id, current_period_end,
-        cancel_at_period_end, updated_at
+        cancel_at_period_end, updated_at, referral_code
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
       )
       ON CONFLICT (uid) DO UPDATE SET
         email                   = COALESCE(EXCLUDED.email, subscribers.email),
@@ -101,7 +107,8 @@ export async function dbUpsertSubscriber(record: SubscriberRecord): Promise<void
         customer_id             = COALESCE(EXCLUDED.customer_id, subscribers.customer_id),
         current_period_end      = EXCLUDED.current_period_end,
         cancel_at_period_end    = EXCLUDED.cancel_at_period_end,
-        updated_at              = EXCLUDED.updated_at`,
+        updated_at              = EXCLUDED.updated_at,
+        referral_code           = COALESCE(EXCLUDED.referral_code, subscribers.referral_code)`,
     [
       record.uid,
       record.email ?? null,
@@ -116,6 +123,7 @@ export async function dbUpsertSubscriber(record: SubscriberRecord): Promise<void
       record.currentPeriodEnd ?? null,
       record.cancelAtPeriodEnd ?? false,
       record.updatedAt ?? Date.now(),
+      record.referralCode ?? null,
     ],
   );
 }

@@ -81,6 +81,7 @@ export const subscriberRecordSchema = z.object({
   currentPeriodEnd: z.number().nullable().default(null),
   cancelAtPeriodEnd: z.boolean().default(false),
   updatedAt: z.number().default(0),
+  referralCode: z.string().nullable().default(null),
 });
 
 export type SubscriberRecord = z.infer<typeof subscriberRecordSchema>;
@@ -94,6 +95,7 @@ export const paddleWebhookEventSchema = z.object({
     customer_id: z.string().optional(),
     custom_data: z.object({
       userId: z.string().optional(),
+      referralCode: z.string().optional(),
     }).optional(),
     items: z.array(z.object({
       price: z.object({

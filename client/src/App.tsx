@@ -44,7 +44,7 @@ declare global {
         open: (options: {
           items: Array<{ priceId: string; quantity: number }>;
           customer?: { email: string };
-          customData?: { userId: string };
+          customData?: { userId: string; referralCode?: string };
           successCallback?: () => void;
           closeCallback?: () => void;
         }) => void;
@@ -419,6 +419,34 @@ function UpgradeDialog({
   );
 }
 
+// ── Referral code helpers ────────────────────────────────────────────────────
+const REFERRAL_KEY = 'vb_referral_code';
+const REFERRAL_EXPIRY_KEY = 'vb_referral_expiry';
+const REFERRAL_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function captureReferralCode(): void {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref')?.trim().toLowerCase();
+  if (ref) {
+    localStorage.setItem(REFERRAL_KEY, ref);
+    localStorage.setItem(REFERRAL_EXPIRY_KEY, String(Date.now() + REFERRAL_TTL_MS));
+  }
+}
+
+function getReferralCode(): string | null {
+  const code = localStorage.getItem(REFERRAL_KEY);
+  const expiry = parseInt(localStorage.getItem(REFERRAL_EXPIRY_KEY) || '0', 10);
+  if (!code || Date.now() > expiry) {
+    localStorage.removeItem(REFERRAL_KEY);
+    localStorage.removeItem(REFERRAL_EXPIRY_KEY);
+    return null;
+  }
+  return code;
+}
+
+// Capture ?ref= param as early as possible
+captureReferralCode();
+
 function App() {
   const [firebaseApp, setFirebaseApp] = useState<FirebaseApp | null>(null);
   const [auth, setAuth] = useState<Auth | null>(null);
@@ -754,7 +782,7 @@ function App() {
     window.Paddle?.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       customer: { email: user.email || '' },
-      customData: { userId: user.uid },
+      customData: { userId: user.uid, referralCode: getReferralCode() || undefined },
       successCallback: async () => {
         // Update subscription in Firestore after successful checkout
         if (db && user) {

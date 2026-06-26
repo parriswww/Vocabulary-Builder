@@ -11,6 +11,7 @@ export default function AdminPanel() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' }>({ text: '', type: 'success' });
   const [extendDays, setExtendDays] = useState<Record<string, string>>({});
   const [activateMonths, setActivateMonths] = useState<Record<string, string>>({});
+  const [referralFilter, setReferralFilter] = useState<string>('all');
 
   useEffect(() => {
     const splash = document.getElementById('splash');
@@ -143,12 +144,23 @@ export default function AdminPanel() {
     return { label: s.status.charAt(0).toUpperCase() + s.status.slice(1), cls: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' };
   };
 
+  const allReferralCodes = Array.from(
+    new Set(subscribers.map(s => s.referralCode).filter(Boolean) as string[])
+  ).sort();
+
+  const filteredSubscribers = referralFilter === 'all'
+    ? subscribers
+    : referralFilter === 'none'
+    ? subscribers.filter(s => !s.referralCode)
+    : subscribers.filter(s => s.referralCode === referralFilter);
+
   const stats = {
     total: subscribers.length,
     paid: subscribers.filter(s => s.isPremium && s.status === 'active').length,
     trial: subscribers.filter(s => s.status === 'trialing' && s.trialEndDate && s.trialEndDate > Date.now()).length,
     trialExpired: subscribers.filter(s => s.status === 'trialing' && s.trialEndDate && s.trialEndDate <= Date.now()).length,
     adminGrant: subscribers.filter(s => s.adminGrantedFreeUntil && s.adminGrantedFreeUntil > Date.now()).length,
+    referrals: allReferralCodes.length,
   };
 
   // Login screen
@@ -236,13 +248,14 @@ export default function AdminPanel() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
           {[
             { label: 'Total Users', value: stats.total, color: 'text-white' },
             { label: 'Paid / Active', value: stats.paid, color: 'text-green-400' },
             { label: 'On Trial', value: stats.trial, color: 'text-amber-400' },
             { label: 'Trial Expired', value: stats.trialExpired, color: 'text-red-400' },
             { label: 'Admin Grant', value: stats.adminGrant, color: 'text-blue-400' },
+            { label: 'Referral Links', value: stats.referrals, color: 'text-purple-400' },
           ].map(stat => (
             <div key={stat.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -253,8 +266,28 @@ export default function AdminPanel() {
 
         {/* Subscribers Table */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Users ({subscribers.length})</h2>
+          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-lg font-semibold text-white">
+                Users ({filteredSubscribers.length}{referralFilter !== 'all' ? ` of ${subscribers.length}` : ''})
+              </h2>
+              {/* Referral filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-400 whitespace-nowrap">Referred by:</label>
+                <select
+                  value={referralFilter}
+                  onChange={e => setReferralFilter(e.target.value)}
+                  data-testid="select-referral-filter"
+                  className="bg-gray-800 border border-gray-700 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="all">All</option>
+                  {allReferralCodes.map(code => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                  <option value="none">No referral</option>
+                </select>
+              </div>
+            </div>
             <span className="text-xs text-gray-500">Persists across server restarts · updates on each user login</span>
           </div>
 
@@ -269,13 +302,14 @@ export default function AdminPanel() {
                   <tr className="border-b border-gray-800 text-gray-400 text-xs">
                     <th className="text-left px-4 py-3 font-medium">User</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-left px-4 py-3 font-medium">Referred by</th>
                     <th className="text-left px-4 py-3 font-medium">Trial End</th>
                     <th className="text-left px-4 py-3 font-medium">Paid Until</th>
                     <th className="text-left px-4 py-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {subscribers.map(sub => {
+                  {filteredSubscribers.map(sub => {
                     const badge = getStatusBadge(sub);
                     return (
                       <tr key={sub.uid} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
@@ -295,6 +329,22 @@ export default function AdminPanel() {
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${badge.cls}`}>
                             {badge.label}
                           </span>
+                        </td>
+
+                        {/* Referred by */}
+                        <td className="px-4 py-4">
+                          {sub.referralCode ? (
+                            <button
+                              onClick={() => setReferralFilter(sub.referralCode!)}
+                              data-testid={`button-filter-referral-${sub.uid}`}
+                              className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                              title={`Filter by ${sub.referralCode}`}
+                            >
+                              {sub.referralCode}
+                            </button>
+                          ) : (
+                            <span className="text-gray-600 text-xs">—</span>
+                          )}
                         </td>
 
                         {/* Trial End */}

@@ -576,8 +576,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).send('OK');
       }
 
+      const referralCode = event.data.custom_data?.referralCode?.trim() || null;
+
       let subscriptionUpdate: Partial<Subscription> = { updatedAt: Date.now() };
-      let registryUpdate: Partial<SubscriberRecord> = { uid: userId, updatedAt: Date.now() };
+      let registryUpdate: Partial<SubscriberRecord> = { uid: userId, updatedAt: Date.now(), referralCode };
 
       switch (event.event_type) {
         case 'subscription.created':
