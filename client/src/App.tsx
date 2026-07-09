@@ -2444,7 +2444,7 @@ function App() {
             <FlashcardsView words={filteredWords} onSpeak={speakWord} onReview={updateWordProgress} />
           )}
 
-          {currentView === 'quiz' && <QuizView words={filteredWords} />}
+          {currentView === 'quiz' && <QuizView words={filteredWords} onReview={updateWordProgress} />}
 
           {currentView === 'stats' && <StatisticsView words={words} metadata={metadata} />}
 
@@ -4021,7 +4021,7 @@ function FlashcardsView({ words, onSpeak, onReview }: { words: Word[]; onSpeak: 
 }
 
 // Quiz View Component
-function QuizView({ words }: { words: Word[] }) {
+function QuizView({ words, onReview }: { words: Word[]; onReview: (wordId: string, quality: number) => void }) {
   const [started, setStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -4131,9 +4131,14 @@ function QuizView({ words }: { words: Word[] }) {
     if (selectedAnswer !== null) return;
     setSelectedAnswer(word.word);
 
-    if (word.id === currentWord.id) {
+    const isCorrect = word.id === currentWord.id;
+    if (isCorrect) {
       setScore((s) => s + 1);
     }
+
+    // Record this quiz answer as a review for spaced repetition + stats,
+    // same as flashcard ratings do. quality >= 3 counts as correct.
+    onReview(currentWord.id, isCorrect ? 5 : 1);
 
     setTimeout(() => {
       if (currentQuestionIndex + 1 < quizWords.length) {
