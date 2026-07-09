@@ -1295,19 +1295,28 @@ function App() {
   };
 
   const handlePasswordReset = async (email: string) => {
-    if (!auth) return;
-    
+    if (!auth) {
+      setAuthError('Still loading — please wait a moment and try again.');
+      return;
+    }
+
     setAuthError('');
     setAuthSuccess('');
     try {
-      await sendPasswordResetEmail(auth, email);
-      setAuthSuccess('Check your inbox — we sent a link to set your password. Once set, you can log in with email and password.');
+      const continueUrl = `${window.location.origin}/`;
+      await sendPasswordResetEmail(auth, email, {
+        url: continueUrl,
+        handleCodeInApp: false,
+      });
+      setAuthSuccess('If that email is registered, a reset link is on its way. Check your inbox (and spam folder) — click the link to set a new password, then come back here to log in.');
     } catch (error: any) {
       console.error('Password reset error:', error);
-      if (error.code === 'auth/user-not-found') {
-        setAuthError('No account found with that email. Try creating a new account instead.');
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+        setAuthSuccess('If that email is registered, a reset link is on its way. Check your inbox (and spam folder) — click the link to set a new password, then come back here to log in.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setAuthError('Too many attempts. Please wait a few minutes before trying again.');
       } else {
-        setAuthError(error.message || 'Failed to send password reset email');
+        setAuthError(error.message || 'Failed to send password reset email. Please try again.');
       }
     }
   };
