@@ -642,9 +642,26 @@ function App() {
       return;
     }
 
-    // Safety net: if onSnapshot never fires (e.g. Firestore network issue),
-    // unblock the UI after 3 seconds so the paywall/app still renders.
+    // Safety net: if onSnapshot never fires (e.g. Firestore network issue on mobile),
+    // unblock the UI after 3 seconds. Use the last-known cached subscription so
+    // existing subscribers aren't shown the paywall on a slow connection.
+    const cacheKey = `vb_sub_${user.uid}`;
     const timeoutId = setTimeout(() => {
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setSubscription((prev) => ({
+            ...prev,
+            isPremium: parsed.isPremium ?? prev.isPremium,
+            status: parsed.status ?? prev.status,
+            trialEndDate: parsed.trialEndDate ?? prev.trialEndDate,
+            trialStartDate: parsed.trialStartDate ?? prev.trialStartDate,
+            adminGrantedFreeUntil: parsed.adminGrantedFreeUntil ?? prev.adminGrantedFreeUntil,
+            currentPeriodEnd: parsed.currentPeriodEnd ?? prev.currentPeriodEnd,
+          }));
+        }
+      } catch (e) { /* ignore */ }
       setSubscriptionChecked(true);
     }, 3000);
 
@@ -738,7 +755,7 @@ function App() {
           // says the user is paid — this handles the case where Firestore hasn't propagated yet.
           const overrideIsPremium = adminOverride.isPremium === true;
           const overridePeriodEnd = adminOverride.currentPeriodEnd ?? null;
-          setSubscription({
+          const resolvedSub = {
             isPremium: overrideIsPremium || data.isPremium || false,
             subscriptionId: data.subscriptionId || null,
             customerId: data.customerId || null,
@@ -750,7 +767,20 @@ function App() {
             trialStartDate: data.trialStartDate || null,
             trialEndDate: adminOverride.trialEndDate ?? data.trialEndDate ?? null,
             adminGrantedFreeUntil: adminOverride.adminGrantedFreeUntil ?? data.adminGrantedFreeUntil ?? null,
-          });
+          };
+          setSubscription(resolvedSub);
+          // Cache subscription so the 3-second safety timeout can restore it on
+          // slow mobile connections instead of falling back to empty defaults.
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              isPremium: resolvedSub.isPremium,
+              status: resolvedSub.status,
+              trialEndDate: resolvedSub.trialEndDate,
+              trialStartDate: resolvedSub.trialStartDate,
+              adminGrantedFreeUntil: resolvedSub.adminGrantedFreeUntil,
+              currentPeriodEnd: resolvedSub.currentPeriodEnd,
+            }));
+          } catch (e) { /* ignore storage errors */ }
         } else {
           // No subscription doc → first-time user, start trial
           await initTrial();
@@ -978,8 +1008,15 @@ function App() {
   });
 
   // Add or update word
-  const saveWord = async (wordData: InsertWord) => {
-    if (!db || !user) return;
+  const saveWord = async (wordData: InsertWord): Promise<void> => {
+    if (!db || !user) {
+      toast({
+        title: 'Not signed in',
+        description: 'Please sign in again and try saving your word.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const appId = window.__app_id;
     const userPath = `artifacts/${appId}/users/${user.uid}`;
@@ -1005,6 +1042,11 @@ function App() {
       setCurrentView('list');
     } catch (error) {
       console.error('Error saving word:', error);
+      toast({
+        title: 'Could not save word',
+        description: 'There was a problem saving your word. Please check your connection and try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -2409,8 +2451,8 @@ function App() {
           </nav>
         </div>
 
-        {/* Content Area */}
-        <div className="px-4 py-6">
+        {/* Content Area — pb-20 ensures content isn't hidden behind iOS home bar */}
+        <div className="px-4 pt-6 pb-20">
           {currentView === 'list' && (
             <WordListView
               words={filteredWords}
@@ -3502,7 +3544,7 @@ function AddEditWordView({
   onCancel,
 }: {
   editingWord: Word | null;
-  onSave: (wordData: InsertWord) => void;
+  onSave: (wordData: InsertWord) => Promise<void>;
   onCancel: () => void;
 }) {
   const [word, setWord] = useState(editingWord?.word || '');
@@ -3517,6 +3559,7 @@ function AddEditWordView({
   const [antonyms, setAntonyms] = useState<string[]>([]);
   const [enrichFetched, setEnrichFetched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const lookUpWord = async () => {
     if (!word.trim()) return;
@@ -3551,7 +3594,7 @@ function AddEditWordView({
     setLoading(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!word.trim() || definitions.filter((d) => d.trim()).length === 0) {
@@ -3569,7 +3612,12 @@ function AddEditWordView({
       sentences: sentences.filter((s) => s.trim()),
     };
 
-    onSave(wordData);
+    setIsSaving(true);
+    try {
+      await onSave(wordData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -3757,15 +3805,17 @@ function AddEditWordView({
           <button
             type="submit"
             data-testid="button-save-word"
-            className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover-elevate active-elevate-2"
+            disabled={isSaving || loading}
+            className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover-elevate active-elevate-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {editingWord ? 'Update Word' : 'Save Word'}
+            {isSaving ? 'Saving…' : editingWord ? 'Update Word' : 'Save Word'}
           </button>
           <button
             type="button"
             onClick={onCancel}
+            disabled={isSaving}
             data-testid="button-cancel"
-            className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg font-medium hover-elevate active-elevate-2"
+            className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg font-medium hover-elevate active-elevate-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
